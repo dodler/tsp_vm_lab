@@ -1,0 +1,4 @@
+grant codeBase "file:/home/artem/IdeaProjects/Custom/" {
+    permission java.security.AllPermission;
+    permission java.net.SocketPermission "*:1202-", "connect,accept,listen,resolve";
+};
