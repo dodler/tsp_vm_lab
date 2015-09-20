@@ -17,27 +17,41 @@ public class AppClientL1
         Matrix matrix = NumericMatrix.randomMatrix(10, 10);
         printMatrix(matrix);
 
-        File file = new File("test.txt");
+//        File file = new File("test.txt");
+//        File file = new File(args[0]);
+//        File file2 = new File(args[1]);
+        File file = new File("tset.txt");
+        File file2 = new File("test2.txt");
         if (!file.exists())
         {
             file.createNewFile();
         }
-        NumericMatrix.writeMatrix(new FileWriter(file), matrix);
+        if (!file2.exists())
+        {
+            file2.createNewFile();
+        }
+        NumericMatrix.writeMatrix(new FileWriter(file), NumericMatrix.randomMatrix(3,3));
+        NumericMatrix.writeMatrix(new FileWriter(file2), NumericMatrix.randomMatrix(3,3));
 
-        FileReader in = new FileReader(file);
-        Matrix m2 = NumericMatrix.readMatrix(in);
+        FileReader in = new FileReader(file), in2=new FileReader(file2);
+        Matrix m2 = NumericMatrix.readMatrix(in), m3=NumericMatrix.readMatrix(in2);
         printMatrix(m2);
+        printMatrix(m3);
 
-        printMatrix(NumericMatrix.multiplicateMatrix(matrix, matrix));
+//        printMatrix(NumericMatrix.multiplicateMatrix(matrix, matrix));
 
         Socket socket = new Socket("localhost", 12000);
         ServerImpl handler = new ServerImpl();
         OutputStream out = socket.getOutputStream();
-        handler.sendData(out, matrix);
+        handler.sendData(out, m2);
+        handler.sendData(out, m3);
+        Matrix result = handler.getData(socket.getInputStream());
+        System.out.println("result");
+        printMatrix(result);
 //        handler.sendData(socket.getOutputStream(), matrix);
 
-        Matrix m3 = handler.getData(socket.getInputStream());
-        printMatrix(m3);
+//        Matrix m3 = handler.getData(socket.getInputStream());
+//        printMatrix(m3);
     }
 
     public static void printMatrix(Matrix matrix)

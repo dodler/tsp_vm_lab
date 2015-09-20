@@ -1,9 +1,6 @@
 package vm.container;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
@@ -15,25 +12,78 @@ import java.util.Random;
  */
 public class NumericMatrix implements Matrix
 {
-    private int[][] matrix;
+    private double[][] matrix;
     private int width, height;
 
     public NumericMatrix(int width, int height)
     {
-        matrix = new int[width][height];
+        matrix = new double[width][height];
         this.width = width;
         this.height = height;
     }
 
-    public static NumericMatrix randomMatrix(int width, int height){
+    public static void printMatrix(Matrix matrix, PrintWriter writer)
+    {
+        if (!matrix.getClass().equals(NumericMatrix.class))
+        {
+            return; // can print only numeric matrix instances
+        }
+
+        int width = ((NumericMatrix) matrix).getWidth(), height = ((NumericMatrix) matrix).getHeight();
+        for (int i = 0; i < width; i++)
+        {
+            for (int j = 0; j < height; j++)
+            {
+                writer.print(matrix.get(i, j) + "|");
+            }
+            writer.println("\n--------------------------");
+        }
+    }
+
+    public static void printMatrix(Matrix matrix)
+    {
+        if (!matrix.getClass().equals(NumericMatrix.class))
+        {
+            return; // can print only numeric matrix instances
+        }
+
+        int width = ((NumericMatrix) matrix).getWidth(), height = ((NumericMatrix) matrix).getHeight();
+        for (int i = 0; i < width; i++)
+        {
+            for (int j = 0; j < height; j++)
+            {
+                System.out.print(matrix.get(i, j) + "|");
+            }
+            System.out.println("\n--------------------------");
+        }
+    }
+
+    public static NumericMatrix zeroMatrix(int width, int height)
+    {
         Matrix matrix = new NumericMatrix(width, height);
         Random rand = new Random(System.currentTimeMillis());
-        for(int i = 0; i<width; i++){
-            for(int j = 0; j<height; j++){
-                matrix.set(i,j,rand.nextInt());
+        for (int i = 0; i < width; i++)
+        {
+            for (int j = 0; j < height; j++)
+            {
+                matrix.set(i, j, (double) 0);
             }
         }
-        return (NumericMatrix)matrix;
+        return (NumericMatrix) matrix;
+    }
+
+    public static NumericMatrix randomMatrix(int width, int height)
+    {
+        Matrix matrix = new NumericMatrix(width, height);
+        Random rand = new Random(System.currentTimeMillis());
+        for (int i = 0; i < width; i++)
+        {
+            for (int j = 0; j < height; j++)
+            {
+                matrix.set(i, j, rand.nextDouble());
+            }
+        }
+        return (NumericMatrix) matrix;
     }
 
     /**
@@ -83,20 +133,25 @@ public class NumericMatrix implements Matrix
     /**
      * method sums two matrix and returns result
      * it is assumed that both matrix have same dimensions
+     *
      * @param m1 matrix 1
      * @param m2 matrix 1
      * @return sum of m1 and m2
      */
-    public static Matrix sumMatrix(Matrix m1, Matrix m2){
-        if (!m1.getClass().equals(NumericMatrix.class)){
+    public static Matrix sumMatrix(Matrix m1, Matrix m2)
+    {
+        if (!m1.getClass().equals(NumericMatrix.class))
+        {
             throw new IllegalArgumentException("Not supported for type:" + m1.getClass().getName());
         }
-        int width = ((NumericMatrix)m1).getWidth(),height=((NumericMatrix)m1).getHeight();
+        int width = ((NumericMatrix) m1).getWidth(), height = ((NumericMatrix) m1).getHeight();
         Matrix matrix = new NumericMatrix(width, height);
 
-        for(int i = 0; i<width; i++){
-            for(int j = 0; j<height; j++){
-                matrix.set(i,j, (int)m1.get(i,j) + (int)m2.get(i,j));
+        for (int i = 0; i < width; i++)
+        {
+            for (int j = 0; j < height; j++)
+            {
+                matrix.set(i, j, (int) m1.get(i, j) + (int) m2.get(i, j));
             }
         }
 
@@ -109,29 +164,51 @@ public class NumericMatrix implements Matrix
      * if height of first matrix is not equal to width of second, method throws an exception
      * works only with NumericMatrix type
      * for other types an exception will be thrown
+     *
      * @param m1 first matrix
      * @param m2 second matrix
      * @return multiplicated matrix
      */
-    public static Matrix multiplicateMatrix(Matrix m1, Matrix m2){
-        if (!m1.getClass().equals(NumericMatrix.class)){
+    public static Matrix multiplicateMatrix(Matrix m1, Matrix m2)
+    {
+        if (!m1.getClass().equals(NumericMatrix.class))
+        {
             throw new IllegalArgumentException("Not supported for type:" + m1.getClass().getName());
         }
-        int width = ((NumericMatrix)m1).getWidth(),height=((NumericMatrix)m1).getHeight();
-        if (height != ((NumericMatrix)m2).getWidth()) throw new IllegalArgumentException("Bad dimensions of matrix");
+        int width = ((NumericMatrix) m1).getWidth(), height = ((NumericMatrix) m1).getHeight();
+        if (height != ((NumericMatrix) m2).getWidth()) throw new IllegalArgumentException("Bad dimensions of matrix");
         Matrix matrix = new NumericMatrix(width, height);
 
-        for(int i = 0; i<width; i++){
-            for(int j = 0; j<height; j++){
-                int cij=0;
-                for(int r = 0; r<height; r++){
-                    cij += (int)m1.get(i,r) * (int)m2.get(r,j);
+        for (int i = 0; i < width; i++)
+        {
+            for (int j = 0; j < height; j++)
+            {
+                double cij = 0;
+                for (int r = 0; r < height; r++)
+                {
+                    cij += (double) m1.get(i, r) * (double) m2.get(r, j);
                 }
-                matrix.set(i,j, cij);
+                matrix.set(i, j, cij);
             }
         }
 
         return matrix;
+    }
+
+    public static Matrix<Double> fromVector(Vector<Double> vector)
+    {
+        Matrix<Double> m = zeroMatrix(1, vector.getSize());
+        for (int i = 0; i < vector.getSize(); i++)
+        {
+            m.set(0, i, vector.get(i));
+        }
+        return m;
+    }
+
+    public static Matrix<Double> multiplicateMatrixToVector(Matrix matrix, Vector<Double> vector)
+    {
+        Matrix<Double> m2 = fromVector(vector);
+        return multiplicateMatrix(matrix, m2);
     }
 
     /**
@@ -141,6 +218,7 @@ public class NumericMatrix implements Matrix
      * it is assumed that lines are splited with - symbol
      * (if you will print - to end of line will be good)
      * PLS USE ONLY OOB METHODS
+     *
      * @param in
      * @throws IOException
      */
@@ -165,6 +243,7 @@ public class NumericMatrix implements Matrix
 
     /**
      * method returns matrix from list of strings read from reader
+     *
      * @param inp list of input strings
      * @return
      */
@@ -172,11 +251,12 @@ public class NumericMatrix implements Matrix
     {
         System.out.println(inp);
         int width, height;
-        if (inp.size() >0)
+        if (inp.size() > 0)
         {
             width = inp.get(0).split("\\|").length;
-        }else{
-            return new NumericMatrix(0,0);
+        } else
+        {
+            return new NumericMatrix(0, 0);
         }
         height = inp.size();
         Matrix matrix = new NumericMatrix(width, height);
@@ -226,10 +306,10 @@ public class NumericMatrix implements Matrix
     @Override
     public void set(int i, int j, Object value)
     {
-        int val=0;
+        double val = 0;
         try
         {
-            val = (int) value;
+            val = (double) value;
         } catch (ClassCastException cce)
         {
             throw new IllegalArgumentException("Argument value has incompatible type.");
