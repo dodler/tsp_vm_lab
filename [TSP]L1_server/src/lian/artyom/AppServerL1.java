@@ -1,6 +1,6 @@
-package lyan.artyom;
+package lian.artyom;
 
-import lyan.artyom.server.impl.ServerImpl;
+import lian.artyom.server.impl.ServerImpl;
 import vm.container.Matrix;
 import vm.container.NumericMatrix;
 

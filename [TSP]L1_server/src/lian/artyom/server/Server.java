@@ -1,4 +1,4 @@
-package lyan.artyom.server;
+package lian.artyom.server;
 
 import vm.container.Matrix;
 

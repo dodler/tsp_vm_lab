@@ -1,6 +1,6 @@
-package lyan.artyom;
+package lian.artyom;
 
-import lyan.artyom.server.impl.ServerImpl;
+import lian.artyom.server.impl.ServerImpl;
 import vm.container.Matrix;
 import vm.container.NumericMatrix;
 
@@ -60,7 +60,7 @@ public class AppClientL1
             return; // can print only numeric matrix instances
         }
 
-        int width = ((NumericMatrix) matrix).getWidth(), height = ((NumericMatrix) matrix).getHeight();
+        int width = ((NumericMatrix) matrix).getRows(), height = ((NumericMatrix) matrix).getColumns();
         for (int i = 0; i < width; i++)
         {
             for (int j = 0; j < height; j++)
