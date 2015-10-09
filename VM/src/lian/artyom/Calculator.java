@@ -178,13 +178,13 @@ public abstract class Calculator
             {
                 p.set((double) currentA.get(i + k, k), i);
             }
-            int delta;
+            double delta;
             if (p.get(0) >= 0)
             {
-                delta = -1;
+                delta = 1.0;
             } else
             {
-                delta = 1;
+                delta = -1.0;
             }
 
             Vector e = Vector.singleVector(p.getSize());
@@ -205,13 +205,13 @@ public abstract class Calculator
             }
             currentA = multiplicateMatrix(multTemp, matrix);
         }
-        result.L=currentA;
+        result.U=currentA;
         Matrix multTemp = singleMatrix(((NumericMatrix) matrix).getRows());
         for (int i = hMatrix.size(); i > 0; i--)
         {
             multTemp = multiplicateMatrix(multTemp, hMatrix.get(i-1));
         }
-        result.U = ((NumericMatrix)multTemp).transpone();
+        result.L = ((NumericMatrix)multTemp).transpone();
 
         return result;
     }
@@ -223,6 +223,12 @@ public abstract class Calculator
         return x;
     }
 
+    /**
+     * wtf does it mean :(
+     * @param prev
+     * @param current
+     * @return
+     */
     public static boolean converge(Vector prev, Vector current)
     {
         throw new UnsupportedOperationException("Not implemented yet.");

@@ -471,7 +471,6 @@ public class NumericMatrix implements Matrix
 
     /**
      * method returns transponed copy of current matrix
-     *
      * @return
      */
     public Matrix transpone()
@@ -481,7 +480,7 @@ public class NumericMatrix implements Matrix
         {
             for (int j = 0; j < columns; j++)
             {
-                result[i] = Arrays.copyOf(matrix[i], matrix[i].length);
+                result[i][j]=matrix[j][i];
             }
         }
         return new NumericMatrix(result);
