@@ -1,12 +1,16 @@
 package lian.artyom;
 
+import org.apache.commons.math3.complex.Complex;
 import org.apache.log4j.Logger;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import vm.container.Matrix;
 import vm.container.NumericMatrix;
 import vm.container.Vector;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 import static vm.container.NumericMatrix.*;
 
@@ -201,36 +205,136 @@ public abstract class Calculator
 
             for (int i = hMatrix.size(); i > 0; i--)
             {
-                multTemp = multiplicateMatrix(multTemp, hMatrix.get(i-1));
+                multTemp = multiplicateMatrix(multTemp, hMatrix.get(i - 1));
             }
             currentA = multiplicateMatrix(multTemp, matrix);
         }
-        result.U=currentA;
-        Matrix multTemp = singleMatrix(((NumericMatrix) matrix).getRows());
-        for (int i = hMatrix.size(); i > 0; i--)
+        result.U = currentA;
+//        Matrix multTemp = singleMatrix(((NumericMatrix) matrix).getRows());
+        Matrix multTemp = null;
+        for (int i = 0; i < hMatrix.size(); i++)
         {
-            multTemp = multiplicateMatrix(multTemp, hMatrix.get(i-1));
+            if (multTemp == null)
+            {
+                multTemp = hMatrix.get(0);
+            } else
+            {
+                multTemp = multiplicateMatrix(multTemp, hMatrix.get(i));
+            }
+
         }
-        result.L = ((NumericMatrix)multTemp).transpone();
+//        result.L = ((NumericMatrix) multTemp).transpone();
+        result.L = multTemp;
 
         return result;
     }
 
-    public Vector seidelSolve(Matrix<Double> a, Vector b)
+    /**
+     * method finds own numbers of system with QR decomposition method
+     *
+     * @param mc container with Q and R matrix
+     * @return solvation of system
+     */
+    public static Complex[] solveWithQR(MatrixContainer mc)
     {
-        Vector x = new Vector(b.getSize());
+        int iterNum=0;
+        Matrix currentA = multiplicateMatrix(mc.L, mc.U),
+                prevA = zeroMatrix(((NumericMatrix)currentA).getRows(),((NumericMatrix)currentA).getColumns());
+        MatrixContainer mcTemp = mc; // TODO add iteration finishing check
+        while(!converge(
+                ((NumericMatrix)prevA).getCol(0),
+                ((NumericMatrix)currentA).getCol(0),
+                0.001
+        )){
+            mcTemp = QR(currentA);
+            prevA = currentA;
+            currentA = multiplicateMatrix(mcTemp.U, mcTemp.L);
+            iterNum++;
+        }
+
+        // works only for 3 rowed matrix
+        // fix it in future
+
+        Complex[] result = new Complex[((NumericMatrix) currentA).getRows()];
+        result[0] = new Complex((double) currentA.get(0, 0));
+        Complex d = new Complex(Math.pow(-(double) currentA.get(1, 1) - (double) currentA.get(2, 2), 2)
+                - 4 * (-(double) currentA.get(1, 2) * (double) currentA.get(2, 1) +
+                (double) currentA.get(1, 1) * (double) currentA.get(2, 2)));
+        d = d.sqrt();
+        result[1] = new Complex(
+                ((double) currentA.get(1, 1) + (double) currentA.get(2, 2) + d.getReal()),
+                d.getImaginary()
+        );
+        result[1] = result[1].divide(2);
+        result[2] = new Complex(
+                ((double) currentA.get(1, 1) + (double) currentA.get(2, 2) - d.getReal()),
+                d.getImaginary()
+        );
+        result[2] = result[2].divide(2);
+
+        for (int i = 0; i < result.length; i++)
+        {
+            logger.debug(result[i]);
+        }
+        logger.debug("iterations:" + iterNum);
+
+        return result;
+    }
+
+
+    public static Vector seidelSolve(Matrix<Double> a, Vector b)
+    {
+        int size = b.getSize();
+        Vector x = Vector.zeroVector(size), p = Vector.zeroVector(size);
+        double precision = 0.0001;
+        int cnt = 0;
+        do
+        {
+
+            for (int i = 0; i < size; i++)
+            {
+                p.set(x.get(i), i);
+            }
+            for (int i = 0; i < size; i++)
+            {
+                double temp = 0;
+                for (int j = 0; j < i; j++)
+                {
+                    temp += (double) a.get(i, j) * x.get(i);
+                }
+                for (int j = i+1; j < size; j++)
+                {
+                    temp += (double) a.get(i, j) * p.get(i);
+                }
+                x.set((b.get(i) - temp) / (double) a.get(i, i), i);
+            }
+            printVector(x);
+            cnt++;
+        } while (!converge(x, p, precision));
+
+        logger.debug("number of iterations:" + cnt);
+        logger.debug("finished.");
+        printVector(x);
 
         return x;
     }
 
     /**
-     * wtf does it mean :(
+     * condition of seidel method
+     * currently it checks if norm of difference of 2 vectors is less than selected precision
+     *
      * @param prev
      * @param current
      * @return
      */
-    public static boolean converge(Vector prev, Vector current)
+    public static boolean converge(Vector prev, Vector current, double precision)
     {
-        throw new UnsupportedOperationException("Not implemented yet.");
+        double norm = 0;
+        for (int i = 0; i < prev.getSize(); i++)
+        {
+            norm += (prev.get(i) - current.get(i))*(prev.get(i) - current.get(i));
+        }
+
+        return (Math.sqrt(norm) <= precision);
     }
 }

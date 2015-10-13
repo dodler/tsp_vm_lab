@@ -69,12 +69,15 @@ public class Vector
         return vector[i];
     }
 
+    public static final double THRESHOLD_ZERO_VALUE=Math.pow(10, -5);
+
     public void set(double value, int i)
     {
         if (i < 0 || i > vector.length)
         {
             throw new IndexOutOfBoundsException("Index [" + i + "] is out of bounds.");
         }
+//        if (value < THRESHOLD_ZERO_VALUE || value == Double.NaN || value == -Double.NaN) value = 0.0;
         vector[i] = value;
     }
 

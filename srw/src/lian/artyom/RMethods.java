@@ -25,12 +25,14 @@ public class RMethods
 
     }
 
+
     public static void main(String[] args)
     {
         if (args.length == 5)
         {
             cropAndHandleImage(args[0], args[1], args[2], args[3], Integer.valueOf(args[4]));
-        }else{
+        } else
+        {
             System.out.println("Not enough arguments to launch.");
         }
     }
@@ -127,8 +129,8 @@ public class RMethods
      * method splits source image several rectangular parts
      *
      * @param img    source image root
-     * @param dir directory where output data will bewritten
-     * @param name name of output file chunk
+     * @param dir    directory where output data will bewritten
+     * @param name   name of output file chunk
      * @param format format of output chunk
      * @param length number of chunks to be craeted
      */
@@ -205,7 +207,7 @@ public class RMethods
         return result;
     }
 
-    public static void buildHist(int[] values, int[]dencities)
+    public static void buildHist(int[] values, int[] dencities)
     {
 
     }

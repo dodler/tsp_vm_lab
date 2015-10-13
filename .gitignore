@@ -40,3 +40,9 @@ Thumbs.db
 *.iml
 *.iml~
 *.csv
+*.txt
+*.in
+*.out
+*.in~
+*.out~
+*.txt~

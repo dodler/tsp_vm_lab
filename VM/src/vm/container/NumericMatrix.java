@@ -290,12 +290,12 @@ public class NumericMatrix implements Matrix
         {
             return m; // do nothing if size equals m size
         }
-
+        size -= rows;
         for (int i = 0; i < rows; i++)
         {
             for (int j = 0; j < rows; j++)
             {
-                single.set(size - i - 1, size - j - 1,
+                single.set(size + i, size + j,
                         m.get(i, j));
             }
         }
@@ -431,6 +431,15 @@ public class NumericMatrix implements Matrix
         return new Vector(values);
     }
 
+    double zeroPoint = Math.pow(10, -3);
+
+    /**
+     * method takes only 4 digits
+     * and cuts to zero all values less than 0.001
+     * @param i
+     * @param j
+     * @param value
+     */
     @Override
     public void set(int i, int j, Object value)
     {
@@ -444,7 +453,8 @@ public class NumericMatrix implements Matrix
         }
         if (i >= 0 && i < rows && j >= 0 && j < columns)
         {
-            matrix[i][j] = val;
+            if (Math.abs(val) < zeroPoint) val = 0.0;
+            matrix[i][j] = Math.rint(10000.0 * val) / 10000.0;
 //        }
         } else
         {

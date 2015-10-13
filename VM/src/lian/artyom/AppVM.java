@@ -43,21 +43,24 @@ public class AppVM
         NumericMatrix.printVector(vector);
         NumericMatrix.printVector(Calculator.solveWithLU(container, vector));
 
+        Calculator.seidelSolve(numericMatrix,vector);
+
 
         logger.debug("QR");
 //        Matrix m = NumericMatrix.zeroMatrix(3,3);
-//        m.set(0,0, 3.0);
-//        m.set(0,1, -1.0);
-//        m.set(1,0, 0.0);
-//        m.set(1,1, 0.0);
-//        m.set(2,0, 4.0);
-//        m.set(2,1, 7.0);
-//        m.set(0,2, 5.0);
-//        m.set(1,2, 5.0);
-//        m.set(2,2, 5.0);
-//        NumericMatrix.writeMatrix(new FileWriter(new File("A.txt")), m);
+//        m.set(0,0, 1.0);
+//        m.set(0,1, 1.0);
+//        m.set(1,0, 4.0);
+//        m.set(1,1, 3.0);
+//        m.set(2,0, 1.0);
+//        m.set(2,1, 3.0);
+//        m.set(0,2, 1.0);
+//        m.set(1,2, 4.0);
+//        m.set(2,2, 1.0);
+//        NumericMatrix.writeMatrix(new FileWriter(new File("B.txt")), m);
 
-        Matrix m = NumericMatrix.readMatrix(new FileReader(new File("A.txt")));
+        Matrix m = NumericMatrix.readMatrix(new FileReader(new File("B.txt")));
+//        Matrix m = NumericMatrix.randomMatrix(3,3);
         NumericMatrix.printMatrix(m);
         Calculator.MatrixContainer container1 = Calculator.QR(m);
         logger.debug("Work finished");
@@ -65,5 +68,6 @@ public class AppVM
         NumericMatrix.printMatrix(container1.L);
         logger.debug("R=");
         NumericMatrix.printMatrix(container1.U);
+        Calculator.solveWithQR(container1);
     }
 }
