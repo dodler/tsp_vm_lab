@@ -22,31 +22,56 @@ public class AppVM
     public static void main(String[] args) throws IOException
     {
         DOMConfigurator.configure("/media/artem/385BE95714C3BE20/IdeaProjects/Custom/config/log4j-config.xml");
-        Matrix numericMatrix=NumericMatrix.randomMatrix(3,3);
-        numericMatrix.set(0,0, 10.0);
-        numericMatrix.set(0,1, -7.0);
-        numericMatrix.set(0,2, 0.0);
-        numericMatrix.set(1,0, -3.0);
-        numericMatrix.set(1,1, 6.0);
-        numericMatrix.set(1,2, 2.0);
-        numericMatrix.set(2,0, 5.0);
-        numericMatrix.set(2,1, -1.0);
-        numericMatrix.set(2,2, 5.0);
+//        final String step1_matr = "step1.txt";
+//        Matrix numericMatrix = NumericMatrix.readMatrix(new FileReader(new File(step1_matr)));
+        final String step2_bad = "step2_bad.txt";
+        Matrix numericMatrix = NumericMatrix.readMatrix(new FileReader(new File(step2_bad)));
         Calculator.MatrixContainer container = Calculator.LU(numericMatrix);
-        System.out.println(Calculator.calcDeterminant(container));
+        logger.debug("Matrx det=" + Calculator.calcDeterminant(container));
         Vector vector = new Vector(3);
-        vector.set(1.0,0);
-        vector.set(23.0,1);
-        vector.set(2.0,2);
+        vector.set(1.0, 0);
+        vector.set(23.0, 1);
+        vector.set(2.0, 2);
 
+        Vector luSolve = Calculator.solveWithLU(container, vector);
+        Vector seidelSolve = Calculator.seidelSolve(numericMatrix, vector);
+
+        Vector solve = new Vector(3);
+        solve.set(804.0 / 145.0, 0);
+        solve.set(227.0 / 29.0, 1);
+        solve.set(-524.0 / 145.0, 2);
+
+        logger.debug("matrix:");
         NumericMatrix.printMatrix(numericMatrix);
+        logger.debug("vector:");
         NumericMatrix.printVector(vector);
-        NumericMatrix.printVector(Calculator.solveWithLU(container, vector));
 
-        Calculator.seidelSolve(numericMatrix,vector);
+        logger.debug("lu solve:");
+        NumericMatrix.printVector(luSolve);
+        logger.debug("seidel solve:");
+        NumericMatrix.printVector(seidelSolve);
+//        logger.debug("original solve:");
+//        NumericMatrix.printVector(solve);
+
+        logger.debug("relative errors:");
+        logger.debug("lu:");
+        for (int i = 0; i < solve.getSize(); i++)
+        {
+            logger.debug(
+                    ((luSolve.get(i)) - solve.get(i))/luSolve.get(i)
+            );
+        }
+
+        for (int i = 0; i < solve.getSize(); i++)
+        {
+            logger.debug(
+                    ((seidelSolve.get(i)) - solve.get(i))/seidelSolve.get(i)
+            );
+        }
 
 
         logger.debug("QR");
+        logger.debug("matrix:");
 //        Matrix m = NumericMatrix.zeroMatrix(3,3);
 //        m.set(0,0, 1.0);
 //        m.set(0,1, 1.0);
@@ -63,7 +88,6 @@ public class AppVM
 //        Matrix m = NumericMatrix.randomMatrix(3,3);
         NumericMatrix.printMatrix(m);
         Calculator.MatrixContainer container1 = Calculator.QR(m);
-        logger.debug("Work finished");
         logger.debug("Q=");
         NumericMatrix.printMatrix(container1.L);
         logger.debug("R=");

@@ -39,6 +39,9 @@ public abstract class Calculator
 
     public static Vector solveWithLU(MatrixContainer container, Vector b)
     {
+        logger.debug("LU method started");
+        int cnt = 0;
+
 //        NumericMatrix.printVector(b);
         Matrix<Double> l = container.L;
 //        NumericMatrix.printMatrix(l);
@@ -58,6 +61,7 @@ public abstract class Calculator
             {
 //                System.out.println("j=" + j);
                 value -= l.get(i, j) * b.get(j);
+                cnt++;
             }
 //            System.out.println("value=" + value);
             y.set(value, i);
@@ -73,18 +77,22 @@ public abstract class Calculator
 //                System.out.println("j=" + j);
                 value -= u.get(i, j + 1)
                         * x.get(j + 1);
+
+                cnt++;
             }
 
             value /= u.get(i, i);
             x.set(value, i);
 //            System.out.println(x.get(i));
         }
-
+        logger.debug("number of iterations:");
+        logger.debug(cnt);
         return x;
     }
 
     public static int calcDeterminant(MatrixContainer container)
     {
+        logger.debug("LU determinant method started");
         int size = ((NumericMatrix) container.L).getColumns(), result = 1;
         for (int i = 0; i < size; i++)
         {
@@ -237,15 +245,17 @@ public abstract class Calculator
      */
     public static Complex[] solveWithQR(MatrixContainer mc)
     {
-        int iterNum=0;
+        logger.debug("QR method started");
+        int iterNum = 0;
         Matrix currentA = multiplicateMatrix(mc.L, mc.U),
-                prevA = zeroMatrix(((NumericMatrix)currentA).getRows(),((NumericMatrix)currentA).getColumns());
+                prevA = zeroMatrix(((NumericMatrix) currentA).getRows(), ((NumericMatrix) currentA).getColumns());
         MatrixContainer mcTemp = mc; // TODO add iteration finishing check
-        while(!converge(
-                ((NumericMatrix)prevA).getCol(0),
-                ((NumericMatrix)currentA).getCol(0),
+        while (!converge(
+                ((NumericMatrix) prevA).getCol(0),
+                ((NumericMatrix) currentA).getCol(0),
                 0.001
-        )){
+        ))
+        {
             mcTemp = QR(currentA);
             prevA = currentA;
             currentA = multiplicateMatrix(mcTemp.U, mcTemp.L);
@@ -284,9 +294,10 @@ public abstract class Calculator
 
     public static Vector seidelSolve(Matrix<Double> a, Vector b)
     {
+        logger.debug("seidel method started");
         int size = b.getSize();
         Vector x = Vector.zeroVector(size), p = Vector.zeroVector(size);
-        double precision = 0.0001;
+        double precision = 0.00001;
         int cnt = 0;
         do
         {
@@ -300,21 +311,20 @@ public abstract class Calculator
                 double temp = 0;
                 for (int j = 0; j < i; j++)
                 {
-                    temp += (double) a.get(i, j) * x.get(i);
+                    temp += (a.get(i, j) * x.get(j));
+                    cnt++;
                 }
-                for (int j = i+1; j < size; j++)
+                for (int j = i + 1; j < size; j++)
                 {
-                    temp += (double) a.get(i, j) * p.get(i);
+                    temp += (a.get(i, j) * p.get(j));
+                    cnt++;
                 }
-                x.set((b.get(i) - temp) / (double) a.get(i, i), i);
+                x.set((b.get(i) - temp) / a.get(i, i), i);
             }
-            printVector(x);
-            cnt++;
         } while (!converge(x, p, precision));
+//        } while (cnt<10000);
 
         logger.debug("number of iterations:" + cnt);
-        logger.debug("finished.");
-        printVector(x);
 
         return x;
     }
@@ -332,7 +342,7 @@ public abstract class Calculator
         double norm = 0;
         for (int i = 0; i < prev.getSize(); i++)
         {
-            norm += (prev.get(i) - current.get(i))*(prev.get(i) - current.get(i));
+            norm += (prev.get(i) - current.get(i)) * (prev.get(i) - current.get(i));
         }
 
         return (Math.sqrt(norm) <= precision);
