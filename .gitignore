@@ -46,3 +46,6 @@ Thumbs.db
 *.in~
 *.out~
 *.txt~
+*.xml
+*.swp
+*.xml~

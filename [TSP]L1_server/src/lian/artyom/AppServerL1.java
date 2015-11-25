@@ -2,7 +2,7 @@ package lian.artyom;
 
 import lian.artyom.server.impl.ServerImpl;
 import vm.container.Matrix;
-import vm.container.NumericMatrix;
+import vm.container.util.NumericMatrixUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,7 +41,7 @@ public class AppServerL1 extends Thread
             InputStream in = socket.getInputStream();
             Matrix m1=handler.getData(in),
                     m2=handler.getData(in),
-                    result= NumericMatrix.multiplicateMatrix(m1,m2);
+                    result= NumericMatrixUtils.multiplicateMatrix(m1, m2);
             //Matrix result = NumericMatrix.randomMatrix(10,10);
             System.out.println("read data");
             handler.sendData(socket.getOutputStream(), result);

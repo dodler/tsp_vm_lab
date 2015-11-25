@@ -2,7 +2,7 @@ package lian.artyom.server.impl;
 
 import lian.artyom.server.Server;
 import vm.container.Matrix;
-import vm.container.NumericMatrix;
+import vm.container.util.NumericMatrixUtils;
 
 import java.io.*;
 import java.util.LinkedList;
@@ -37,14 +37,14 @@ public class ServerImpl implements Server
 //        System.out.println("ServerImpl strings=" + strings);
 //        System.out.println(strings.size());
 
-        return NumericMatrix.getMatrixFromStringList(strings);
+        return NumericMatrixUtils.getMatrixFromStringList(strings);
     }
 
     @Override
     public void sendData(OutputStream out, Matrix matrix) throws IOException
     {
         BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
-        writer.write(NumericMatrix.getMatrixAsString(matrix));
+        writer.write(NumericMatrixUtils.getMatrixAsString(matrix));
         writer.flush();
 //        writer.close();
     }

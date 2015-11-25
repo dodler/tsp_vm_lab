@@ -1,6 +1,13 @@
 package vm.container;
 
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.ArrayRealVector;
+import org.apache.commons.math3.linear.RealMatrix;
+import org.apache.commons.math3.linear.RealVector;
+import vm.container.util.NumericMatrixUtils;
+
 import java.util.Arrays;
+import java.util.Random;
 
 /**
  * class that incapsulates logic of work with
@@ -19,26 +26,104 @@ public class Vector
      * @param size size of vector
      * @return
      */
-    public static Vector singleVector(int size)
+    public static RealVector singleVector(int size)
     {
-        Vector result = new Vector(size);
-        result.set(1, 0);
+        RealVector result = new ArrayRealVector(size);
+        result.setEntry(0, 1);
         for (int i = 1; i < size; i++)
         {
-            result.set(0, i);
+            result.setEntry(i, 0.0);
         }
         return result;
     }
 
     /**
+     * method creates vector where values are filled by order - from little to large
+     *
+     * @param size
+     * @return
+     */
+    public static RealVector risingVector(int size)
+    {
+        RealVector result = new ArrayRealVector(size);
+        for (int i = 0; i < size; i++)
+        {
+            result.setEntry(i, i + 1.0);
+        }
+        return result;
+    }
+
+    /**
+     * method returns randomly generated vector
+     *
+     * @param size
+     * @return
+     */
+    public static RealVector randomVector(int size)
+    {
+        RealVector result = new ArrayRealVector(size);
+        Random rand = new Random(System.currentTimeMillis());
+        for (int i = 0; i < size; i++)
+        {
+            result.setEntry(i, rand.nextDouble());
+        }
+        return result;
+    }
+
+    public Double max()
+    {
+        double result = Double.MIN_VALUE;
+        for (int i = 0; i < this.vector.length; i++)
+        {
+            if (vector[i] > result)
+            {
+                result = vector[i];
+            }
+        }
+        return result;
+    }
+
+    public Double min()
+    {
+        double result = Double.MAX_VALUE;
+        for (int i = 0; i < this.vector.length; i++)
+        {
+            if (vector[i] < result)
+            {
+                result = vector[i];
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public String toString()
+    {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Vector:{");
+        for (int i = 0; i < vector.length; i++)
+        {
+            sb.append(vector[i]);
+            if (i != vector.length-1)
+            sb.append(",");
+        }
+        sb.append("}");
+        return sb.toString();
+    }
+
+    /**
      * method returns vector with zeros
+     *
      * @param size size of created vector
      * @return
      */
-    public static Vector zeroVector(int size)
+    public static RealVector zeroVector(int size)
     {
-        Vector result = singleVector(size);
-        result.set(0, 0);
+        RealVector result = singleVector(size);
+        for (int i = 0; i < size; i++)
+        {
+            result.setEntry(i, 0.0);
+        }
         return result;
     }
 
@@ -69,7 +154,7 @@ public class Vector
         return vector[i];
     }
 
-    public static final double THRESHOLD_ZERO_VALUE=Math.pow(10, -5);
+    public static final double THRESHOLD_ZERO_VALUE = Math.pow(10, -5);
 
     public void set(double value, int i)
     {
@@ -116,6 +201,10 @@ public class Vector
         return -1;
     }
 
+    public double norm(){
+        return norm(OCTA_NORM);
+    }
+
     public double octaNorm()
     {
         double sum = 0;
@@ -141,14 +230,15 @@ public class Vector
      * @param vector
      * @return
      */
-    public Matrix multiplicateColumnByRow(Vector vector)
+    public static RealMatrix multiplicateColumnByRow(RealVector source, RealVector vector)
     {
-        Matrix result = NumericMatrix.zeroMatrix(this.vector.length, this.vector.length);
-        for (int i = 0; i < this.vector.length; i++)
+        int size = source.getDimension();
+        RealMatrix result = new Array2DRowRealMatrix(size, size);
+        for (int i = 0; i < size; i++)
         {
-            for (int j = 0; j < this.vector.length; j++)
+            for (int j = 0; j < size; j++)
             {
-                result.set(i, j, this.vector[i] * vector.get(j));
+                result.setEntry(i, j, source.getEntry(i) * vector.getEntry(j));
             }
         }
         return result;
@@ -161,12 +251,13 @@ public class Vector
      *
      * @param vector - vector to mulplicate on
      */
-    public double multiplicateRowByColumn(Vector vector)
+    public static double multiplicateRowByColumn(RealVector source, RealVector vector)
     {
+        int size = source.getDimension();
         double result = 0;
-        for (int i = 0; i < this.vector.length; i++)
+        for (int i = 0; i < size; i++)
         {
-            result += this.vector[i] * vector.get(i);
+            result += source.getEntry(i) * vector.getEntry(i);
         }
         return result;
     }

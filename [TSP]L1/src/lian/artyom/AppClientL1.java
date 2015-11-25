@@ -3,6 +3,7 @@ package lian.artyom;
 import lian.artyom.server.impl.ServerImpl;
 import vm.container.Matrix;
 import vm.container.NumericMatrix;
+import vm.container.util.NumericMatrixUtils;
 
 import java.io.*;
 import java.net.Socket;
@@ -14,7 +15,7 @@ public class AppClientL1
 {
     public static void main(String[] args) throws IOException
     {
-        Matrix matrix = NumericMatrix.randomMatrix(10, 10);
+        Matrix matrix = NumericMatrixUtils.randomMatrix(10, 10);
         printMatrix(matrix);
 
 //        File file = new File("test.txt");
@@ -30,11 +31,11 @@ public class AppClientL1
         {
             file2.createNewFile();
         }
-        NumericMatrix.writeMatrix(new FileWriter(file), NumericMatrix.randomMatrix(3,3));
-        NumericMatrix.writeMatrix(new FileWriter(file2), NumericMatrix.randomMatrix(3,3));
+        NumericMatrixUtils.writeMatrix(new FileWriter(file), NumericMatrixUtils.randomMatrix(3, 3));
+        NumericMatrixUtils.writeMatrix(new FileWriter(file2), NumericMatrixUtils.randomMatrix(3, 3));
 
         FileReader in = new FileReader(file), in2=new FileReader(file2);
-        Matrix m2 = NumericMatrix.readMatrix(in), m3=NumericMatrix.readMatrix(in2);
+        Matrix m2 = NumericMatrixUtils.readMatrix(in), m3= NumericMatrixUtils.readMatrix(in2);
         printMatrix(m2);
         printMatrix(m3);
 

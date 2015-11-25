@@ -6,5 +6,5 @@ import java.rmi.RemoteException;
  */
 public interface RemoteInterface extends Remote
 {
-    void execute() throws RemoteException;
+    Object execute(Object argument) throws RemoteException;
 }

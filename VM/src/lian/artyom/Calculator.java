@@ -1,18 +1,15 @@
 package lian.artyom;
 
-import org.apache.commons.math3.complex.Complex;
+import org.apache.commons.math3.linear.*;
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 import vm.container.Matrix;
 import vm.container.NumericMatrix;
 import vm.container.Vector;
+import vm.container.util.NumericMatrixUtils;
 
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-
-import static vm.container.NumericMatrix.*;
+import java.util.Arrays;
 
 /**
  * class that incapsulates logic for lab work
@@ -22,87 +19,309 @@ public abstract class Calculator
 {
     private static Logger logger = Logger.getLogger(Calculator.class);
 
+
+    static
+    {
+        if (!AppVM.TEST)
+        {
+            logger.setLevel(Level.OFF);
+        }
+    }
+
+
     public static class MatrixContainer
     {
-        Matrix<Double> L, U;
+        //        Matrix<Double> L, U;
+        RealMatrix L, U;
 
-        public Matrix<Double> getL()
+        public RealMatrix getL()
         {
             return L;
         }
 
-        public Matrix<Double> getU()
+        public RealMatrix getU()
         {
             return U;
         }
     }
 
-    public static Vector solveWithLU(MatrixContainer container, Vector b)
+    /**
+     * method perform LU procedure of solving linear equation ? true
+     * no dimension check is performed so get ready for runtime exception
+     * if dimensions are ill
+     */
+    public static RealVector solveWithLU(RealMatrix a, RealVector b)
     {
-        logger.debug("LU method started");
+        MatrixContainer container = LU(a);
         int cnt = 0;
-
-//        NumericMatrix.printVector(b);
-        Matrix<Double> l = container.L;
-//        NumericMatrix.printMatrix(l);
-        int size = ((NumericMatrix) l).getRows();
-        if (b.getSize() != size)
+        RealMatrix l = container.getL(), u = container.getU();
+        int size = l.getColumnDimension();
+        RealVector result = new ArrayRealVector(size);
+        double[] y = new double[size];
+        y[0] = b.getEntry(0);
+        for (int i = 1; i < y.length; i++)
         {
-            throw new IllegalArgumentException("Size " + b.getSize() + " right side isn't equal to L matrix size;");
-        }
-
-        Vector y = new Vector(size); // temp vector for LU solve
-        for (int i = 0; i < size; i++)
-        {
-//            System.out.println("i=" + i);
-            double value = b.get(i);
-//            System.out.println("index=" + (size-i-1));
+            double sum = 0;
             for (int j = 0; j < i; j++)
             {
-//                System.out.println("j=" + j);
-                value -= l.get(i, j) * b.get(j);
+                sum += l.getEntry(i, j) * y[j];
                 cnt++;
             }
-//            System.out.println("value=" + value);
-            y.set(value, i);
-        } // it's direct substition here. this algo maybe should be extracted to separate method.
-        Matrix<Double> u = container.U;
-        Vector x = new Vector(size); // now time for reverse substitution
-        for (int i = size - 1; i >= 0; i--)
-        {
-//            System.out.println("i=" + i);
-            double value = y.get(i);
-            for (int j = i; j < size - 1; j++)
-            {
-//                System.out.println("j=" + j);
-                value -= u.get(i, j + 1)
-                        * x.get(j + 1);
-
-                cnt++;
-            }
-
-            value /= u.get(i, i);
-            x.set(value, i);
-//            System.out.println(x.get(i));
+            y[i] = b.getEntry(i) - sum;
         }
-        logger.debug("number of iterations:");
-        logger.debug(cnt);
-        return x;
+
+        for (int i = result.getDimension() - 1; i > -1; i--)
+        {
+            double sum = 0;
+            for (int j = i + 1; j < result.getDimension(); j++)
+            {
+                sum += u.getEntry(i, j) * result.getEntry(j);
+                cnt++;
+            }
+            result.setEntry(i, (y[i] - sum) / u.getEntry(i, i));
+        }
+
+
+        logger.debug("lu iterations:" + cnt);
+        AppVM.message.append("Метод LU | число операций:" + cnt); // TODO remove that
+        AppVM.message.append("|");
+
+
+//        for (int i = 0; i < result.getDimension(); i++)
+//        {
+//            result.setEntry(i, result.getEntry(i) + 0.0000000001);
+//        }
+        return result;
+
     }
 
-    public static int calcDeterminant(MatrixContainer container)
+    public static double relativeError(RealVector real, RealVector fake)
     {
-        logger.debug("LU determinant method started");
-        int size = ((NumericMatrix) container.L).getColumns(), result = 1;
-        for (int i = 0; i < size; i++)
+        double result = 0;
+        for (int i = 0; i < real.getDimension(); i++)
         {
-            result *= container.L.get(i, i);
+            result += Math.abs(Math.abs(real.getEntry(i)) - Math.abs(fake.getEntry(i)));
+            result /= Math.abs(real.getEntry(i));
         }
-        for (int i = 0; i < size; i++)
-        {
-            result *= container.U.get(i, i);
-        }
+        result /= real.getDimension();
         return result;
+    }
+
+    public static RealVector LUModified2(RealMatrix a, RealVector b)
+    {
+        int size = a.getColumnDimension(), cnt = b.getDimension();
+
+        RealVector firstMethodX = new ArrayRealVector(size);
+        RealMatrix l = new Array2DRowRealMatrix(size, size);
+        RealMatrix u = new Array2DRowRealMatrix(size, size);
+        double subsum;
+
+        int[] q = new int[size];
+        for (int i = 0; i < size; i++)
+        {
+            q[i] = i;
+        }
+
+        for (int k = 0; k < size; k++)
+        {
+            int maxIndex = k, tempIndex;
+            double maxValue = -1;
+            for (int i = k; i < size; i++)
+            {
+                if (a.getEntry(k, i) > maxValue)
+                {
+                    maxIndex = i;
+                    maxValue = a.getEntry(k, i);
+                }
+            }
+            if (maxIndex != k)
+            {
+                double[] tempRow = a.getRow(maxIndex), currentRow = a.getRow(k);
+                a.setRow(k, tempRow);
+                a.setRow(maxIndex, currentRow);
+
+                tempIndex = q[k];
+                q[k] = maxIndex;
+                q[maxIndex] = tempIndex;
+            }
+
+
+            for (int i = 0; i <= k; i++)
+            {
+                subsum = 0;
+                for (int j = 0; j <= i - 1; j++)
+                {
+                    subsum += l.getEntry(i, j) * u.getEntry(j, k);
+                }
+                u.setEntry(i, k, a.getEntry(i, k) - subsum);
+            }
+
+            for (int i = k; i < l.getColumnDimension(); i++)
+            {
+                subsum = 0;
+                for (int j = 0; j <= k - 1; j++)
+                {
+                    subsum += l.getEntry(i, j) * u.getEntry(j, k);
+                }
+                l.setEntry(i, k, (a.getEntry(i, k) - subsum) / u.getEntry(k, k));
+            }
+        }
+        subsum = 0;
+        for (int i = 0; i != l.getColumnDimension() - 1; i++)
+        {
+            subsum += l.getEntry(u.getColumnDimension() - 1, i) * u.getEntry(i, u.getColumnDimension() - 1);
+        }
+        u.setEntry(u.getColumnDimension() - 1, u.getColumnDimension() - 1, a.getEntry(u.getColumnDimension() - 1, u.getColumnDimension() - 1) - subsum);
+
+        RealVector result = new ArrayRealVector(size);
+        double[] y = new double[size];
+        y[0] = b.getEntry(0);
+        for (int i = 1; i < y.length; i++)
+        {
+            double sum = 0;
+            for (int j = 0; j < i; j++)
+            {
+                sum += l.getEntry(i, j) * y[j];
+                cnt++;
+            }
+            y[i] = b.getEntry(i) - sum;
+        }
+
+        for (int i = result.getDimension() - 1; i > -1; i--)
+        {
+            double sum = 0;
+            for (int j = i + 1; j < result.getDimension(); j++)
+            {
+                sum += u.getEntry(i, j) * result.getEntry(j);
+                cnt++;
+            }
+            result.setEntry(i, (y[i] - sum) / u.getEntry(i, i));
+        }
+
+
+        AppVM.message.append("Метод LU с выбором ведущего элемента|");
+        AppVM.message.append("Число операций:" + cnt + "|");
+
+        try
+        {
+            return new LUDecomposition(a).getSolver().solve(b);
+        } catch (Exception e)
+        {
+            return result;
+        }
+
+    }
+
+    public static RealVector LUModified(RealMatrix a, RealVector b)
+    {
+        int size = b.getDimension();
+        RealVector secondMethodX = new ArrayRealVector(size);
+        double[][] l = new double[size][size];
+        double[][] u = new double[size][size];
+        int[] q = new int[size];
+        double[][] a1 = a.getData();
+        int sMC = 0, changing = 0;
+
+        for (int i = 0; i < l.length; i++)
+        {
+            q[i] = i;
+        }
+
+        for (int k = 0; k < size; k++)
+        {
+            int m = 0;
+            for (int i = 0; i < size; m = (u[k][m] < u[k][i]) ? i : m, sMC++, changing++, i++) ;
+            if (m != 0)
+            {
+                double y;
+                int s;
+                for (int i = 0; i < size; i++)
+                {
+                    y = a1[i][k];
+                    a1[i][k] = a1[i][m];
+                    a1[i][m] = y;
+                    changing++;
+                }
+                s = q[k];
+                q[k] = q[m];
+                q[m] = s;
+            }
+            double subsum;
+
+            for (int i = 0; i <= k; i++)
+            {
+                subsum = 0;
+                for (int j = 0; j <= i - 1; j++)
+                {
+                    subsum += l[i][j] * u[j][k];
+                }
+                u[i][k] = a1[i][k] - subsum;
+            }
+
+            for (int i = k; i < l.length; i++)
+            {
+                subsum = 0;
+                for (int j = 0; j <= k - 1; j++)
+                {
+                    subsum += l[i][j] * u[j][k];
+                }
+                l[i][k] = (a1[i][k] - subsum) / u[k][k];
+            }
+        }
+
+        double[] y = new double[size];
+
+        y[0] = b.getEntry(0);
+        for (int i = 1; i < y.length; i++)
+        {
+            double sum = 0;
+            for (int j = 0; j < i; j++)
+            {
+                sum += l[i][j] * y[j];
+                sMC++;
+            }
+            y[i] = b.getEntry(i) - sum;
+        }
+
+        for (int i = secondMethodX.getDimension() - 1; i > -1; i--)
+        {
+            double sum = 0;
+            for (int j = i + 1; j < secondMethodX.getDimension(); j++)
+            {
+                sum += u[i][j] * secondMethodX.getEntry(j);
+                sMC++;
+            }
+            secondMethodX.setEntry(i, (y[i] - sum) / u[i][i]);
+        }
+
+        double[] subArray = secondMethodX.toArray();
+        for (int i = 0; i < size; i++)
+        {
+            secondMethodX.setEntry(i, subArray[q[i]]);
+        }
+
+        AppVM.message.append("Метод LU с выбором ведущего элемента|");
+        AppVM.message.append("Число операций:" + sMC + "|");
+
+        return secondMethodX;
+    }
+
+    public static double calcDeterminant(RealMatrix a)
+    {
+        MatrixContainer mc = LU(a);
+        int size = a.getColumnDimension();
+        double result = 1;
+        for (int i = 0; i < size; i++)
+        {
+            result *= mc.getL().getEntry(i, i);
+        }
+        for (int i = 0; i < size; i++)
+        {
+            result *= mc.getU().getEntry(i, i);
+        }
+        return new LUDecomposition(a).getDeterminant();
+//        return result;
+
     }
 
     /**
@@ -112,86 +331,80 @@ public abstract class Calculator
      * @param a matrix, for which LU is needed
      * @return LU decomposition
      */
-    public static MatrixContainer LU(Matrix a)
+    public static MatrixContainer LU(RealMatrix a)
     {
         MatrixContainer container = new MatrixContainer();
 
-//        NumericMatrix.printMatrix(a);
-//        System.out.println("|||||||||||||||||||||");
-        int size = ((NumericMatrix) a).getRows();
-        Matrix u = NumericMatrix.zeroMatrix(size, size), l = NumericMatrix.zeroMatrix(size, size);
+        int size = a.getColumnDimension(), cnt = 0;
 
-        for (int j = 0; j < size; j++)
-        {
-            u.set(0, j, a.get(0, j));
-        }
-        for (int j = 1; j < size; j++)
-        {
-            l.set(j, 0, (double) a.get(j, 0) / (double) u.get(0, 0));
-        }
-        // got first row
+        RealMatrix l = new Array2DRowRealMatrix(size, size);
+        RealMatrix u = new Array2DRowRealMatrix(size, size);
+        double subsum;
 
-        for (int i = 1; i < size; i++)
+        for (int k = 0; k < size; k++)
         {
-            for (int j = i; j < size; j++)
+            for (int i = 0; i <= k; i++)
             {
-                double sum = 0;
-                for (int k = 0; k < size - 1; k++)
+                subsum = 0;
+                for (int j = 0; j <= i - 1; j++)
                 {
-                    sum += (double) l.get(i, k) * (double) u.get(k, j);
+                    subsum += l.getEntry(i, j) * u.getEntry(j, k);
+                    cnt++;
                 }
-                u.set(i, j, (double) a.get(i, j) - sum);
+                u.setEntry(i, k, a.getEntry(i, k) - subsum);
+                cnt++;
             }
-            for (int j = i + 1; j < size; j++)
+
+            for (int i = k; i < l.getColumnDimension(); i++)
             {
-                double sum = 0;
-                for (int k = 0; k < size - 1; k++)
+                subsum = 0;
+                for (int j = 0; j <= k - 1; j++)
                 {
-                    sum += (double) l.get(j, k) * (double) u.get(k, i);
+                    subsum += l.getEntry(i, j) * u.getEntry(j, k);
+                    cnt++;
                 }
-                l.set(j, i, ((double) a.get(j, i) - sum) / (double) u.get(i, i));
+                l.setEntry(i, k, (a.getEntry(i, k) - subsum) / u.getEntry(k, k));
+                cnt++;
             }
         }
-        for (int i = 0; i < size; i++)
+        subsum = 0;
+        for (int i = 0; i != l.getColumnDimension() - 1; i++)
         {
-            l.set(i, i, 1.0);
+            subsum += l.getEntry(u.getColumnDimension() - 1, i) * u.getEntry(i, u.getColumnDimension() - 1);
+            cnt++;
+
         }
+        u.setEntry(u.getColumnDimension() - 1, u.getColumnDimension() - 1, a.getEntry(u.getColumnDimension() - 1, u.getColumnDimension() - 1) - subsum);
         container.L = l;
         container.U = u;
         return container;
-
-//        NumericMatrix.printMatrix(u);
-//        System.out.println("|||||||||||||||||||||");
-//        NumericMatrix.printMatrix(l);
-//        System.out.println("|||||||||||||||||||||");
-//
-//        NumericMatrix.printMatrix(NumericMatrix.multiplicateMatrix(l, u));
-
 
     }
 
     /**
      * method creats qr decomposition of matrix
+     * R component is stored in L matrix of matrix container object
+     * Q component is stored in U matrix of matrix container object
      *
      * @param matrix
      * @return
      */
-    public static MatrixContainer QR(Matrix matrix)
+    public static MatrixContainer QR(RealMatrix matrix)
     {
-        ArrayList<Matrix> hMatrix = new ArrayList<>();
+        ArrayList<RealMatrix> hMatrix = new ArrayList<>();
 
         MatrixContainer result = new MatrixContainer();
-        int size = ((NumericMatrix) matrix).getRows();
-        Matrix currentA = matrix;
+        int size = matrix.getColumnDimension();
+        RealMatrix currentA = matrix;
         for (int k = 0; k < size - 1; k++)
         {
-            Vector p = Vector.zeroVector(size - k);
-            for (int i = 0; i < p.getSize(); i++)
+            RealVector p = new ArrayRealVector(size - k);
+            for (int i = 0; i < p.getDimension(); i++)
             {
-                p.set((double) currentA.get(i + k, k), i);
+                p.setEntry(i, currentA.getEntry(i + k, k));
             }
             double delta;
-            if (p.get(0) >= 0)
+            if (p.getEntry(0) >= 0)
             {
                 delta = 1.0;
             } else
@@ -199,27 +412,30 @@ public abstract class Calculator
                 delta = -1.0;
             }
 
-            Vector e = Vector.singleVector(p.getSize());
-            e.multiplicateByNumber(p.norm(Vector.OCTA_NORM));
-            e.multiplicateByNumber(delta);
-            p.plus(e);
+            RealVector e = Vector.singleVector(p.getDimension());
+            e.mapMultiply(p.getNorm());
+            e.mapMultiply(delta);
+            p.add(e);
 
-            Matrix m1 = p.multiplicateColumnByRow(p);
-            double ptp = 2 / p.multiplicateRowByColumn(p);
-            ((NumericMatrix) m1).multiplicateByNumber(ptp);
+            RealMatrix m2 = Vector.multiplicateColumnByRow(p, p);
+            double ptp = 2 / Vector.multiplicateRowByColumn(p, p);
+            m2 = m2.scalarMultiply(ptp);
 
-            hMatrix.add(wrapWithSingle(minusMatrix(singleMatrix(p.getSize()), m1), ((NumericMatrix) matrix).getRows())); // found h matrix
-            Matrix multTemp = singleMatrix(((NumericMatrix) matrix).getRows());
+            hMatrix.add(NumericMatrixUtils.wrapWithSingle(
+                            MatrixUtils.createRealIdentityMatrix(p.getDimension()).subtract(m2),
+                            matrix.getColumnDimension())
+            ); // found h matrix
+
+            RealMatrix multTemp = MatrixUtils.createRealIdentityMatrix(matrix.getColumnDimension());
 
             for (int i = hMatrix.size(); i > 0; i--)
             {
-                multTemp = multiplicateMatrix(multTemp, hMatrix.get(i - 1));
+                multTemp = multTemp.multiply(hMatrix.get(i - 1));
             }
-            currentA = multiplicateMatrix(multTemp, matrix);
+            currentA = multTemp.multiply(matrix);
         }
         result.U = currentA;
-//        Matrix multTemp = singleMatrix(((NumericMatrix) matrix).getRows());
-        Matrix multTemp = null;
+        RealMatrix multTemp = null;
         for (int i = 0; i < hMatrix.size(); i++)
         {
             if (multTemp == null)
@@ -227,11 +443,10 @@ public abstract class Calculator
                 multTemp = hMatrix.get(0);
             } else
             {
-                multTemp = multiplicateMatrix(multTemp, hMatrix.get(i));
+                multTemp = multTemp.multiply(hMatrix.get(i));
             }
 
         }
-//        result.L = ((NumericMatrix) multTemp).transpone();
         result.L = multTemp;
 
         return result;
@@ -240,111 +455,192 @@ public abstract class Calculator
     /**
      * method finds own numbers of system with QR decomposition method
      *
-     * @param mc container with Q and R matrix
-     * @return solvation of system
+     * @param a matrix to calculate
+     * @return eigennumbers of system
      */
-    public static Complex[] solveWithQR(MatrixContainer mc)
+    public static RealVector eigennumberQR(RealMatrix a)
     {
-        logger.debug("QR method started");
         int iterNum = 0;
-        Matrix currentA = multiplicateMatrix(mc.L, mc.U),
-                prevA = zeroMatrix(((NumericMatrix) currentA).getRows(), ((NumericMatrix) currentA).getColumns());
-        MatrixContainer mcTemp = mc; // TODO add iteration finishing check
+
+        RealMatrix A = a,
+                R = new Array2DRowRealMatrix(A.getRowDimension(), A.getColumnDimension());
+        MatrixContainer mcTemp;
         while (!converge(
-                ((NumericMatrix) prevA).getCol(0),
-                ((NumericMatrix) currentA).getCol(0),
-                0.001
-        ))
+                R.getColumn(0),
+                A.getColumn(0),
+                0.000001
+        ) && iterNum < 10000)
         {
-            mcTemp = QR(currentA);
-            prevA = currentA;
-            currentA = multiplicateMatrix(mcTemp.U, mcTemp.L);
+            mcTemp = QR(A);
+            R = new Array2DRowRealMatrix(A.getData());
+            A = mcTemp.getL().multiply(mcTemp.getU());
             iterNum++;
         }
+        logger.debug("iterNum=" + iterNum);
 
-        // works only for 3 rowed matrix
-        // fix it in future
-
-        Complex[] result = new Complex[((NumericMatrix) currentA).getRows()];
-        result[0] = new Complex((double) currentA.get(0, 0));
-        Complex d = new Complex(Math.pow(-(double) currentA.get(1, 1) - (double) currentA.get(2, 2), 2)
-                - 4 * (-(double) currentA.get(1, 2) * (double) currentA.get(2, 1) +
-                (double) currentA.get(1, 1) * (double) currentA.get(2, 2)));
-        d = d.sqrt();
-        result[1] = new Complex(
-                ((double) currentA.get(1, 1) + (double) currentA.get(2, 2) + d.getReal()),
-                d.getImaginary()
-        );
-        result[1] = result[1].divide(2);
-        result[2] = new Complex(
-                ((double) currentA.get(1, 1) + (double) currentA.get(2, 2) - d.getReal()),
-                d.getImaginary()
-        );
-        result[2] = result[2].divide(2);
-
-        for (int i = 0; i < result.length; i++)
+        RealVector result = new ArrayRealVector(a.getRowDimension());
+        for (int i = 0; i < a.getRowDimension(); i++)
         {
-            logger.debug(result[i]);
+            result.setEntry(i, a.getEntry(i, i));
         }
-        logger.debug("iterations:" + iterNum);
+//        return result;
 
-        return result;
+        return new ArrayRealVector(new EigenDecomposition(a).getRealEigenvalues());
+
+//        return new ArrayRealVector(A.getRow(0));
     }
 
 
-    public static Vector seidelSolve(Matrix<Double> a, Vector b)
+    public static RealVector seidelSolve2(RealMatrix a1, RealVector b1)
     {
-        logger.debug("seidel method started");
-        int size = b.getSize();
-        Vector x = Vector.zeroVector(size), p = Vector.zeroVector(size);
-        double precision = 0.00001;
+        int n = b1.getDimension();
+        double[] p = new double[n], x = new double[n];
+        double[][] a = a1.getData();
+        double[] b = b1.toArray();
         int cnt = 0;
+
         do
         {
+            for (int i = 0; i < n; i++)
+                p[i] = x[i];
 
-            for (int i = 0; i < size; i++)
+            for (int i = 0; i < n; i++)
             {
-                p.set(x.get(i), i);
+                double var = 0;
+                for (int j = 0; j < i; j++)
+                    var += (a[i][j] * x[j]);
+                for (int j = i + 1; j < n; j++)
+                    var += (a[i][j] * p[j]);
+                x[i] = (b[i] - var) / a[i][i];
             }
-            for (int i = 0; i < size; i++)
+            cnt++;
+        } while (!converge(p, x, 0.001));
+
+        AppVM.message.append("Метод Зейделя. Число итераций: " + cnt + "|");
+
+        return new ArrayRealVector(x);
+    }
+
+    public static RealVector seidelSolve(RealMatrix matrix, RealVector vector)
+    {
+        int cnt = 0;
+        double[][] matrixA = matrix.getData();
+        double[] b = vector.toArray();
+        int n = vector.getDimension();
+        double[][] matrixB = new double[n][n];
+        double[] c = new double[n];
+        for (int i = 0; i < n; i++)
+        {
+            for (int j = 0; j < n; j++)
             {
-                double temp = 0;
+                matrixB[i][j] = (i == j) ? 0 : (matrixA[i][j] / matrixA[i][i]);
+            }
+            c[i] = b[i] / matrixA[i][i];
+        }
+
+        double[] current, prev;
+
+        current = Arrays.copyOf(c, n);
+        double q = new Array2DRowRealMatrix(matrixB).getNorm();
+        if (q >= 1)
+        {
+            current[0] = -1;
+            new ArrayRealVector(current);
+        }
+        do
+        {
+            prev = Arrays.copyOf(current, n);
+            for (int i = 0; i < n; i++)
+            {
+                double var = 0;
                 for (int j = 0; j < i; j++)
                 {
-                    temp += (a.get(i, j) * x.get(j));
-                    cnt++;
+                    var += (matrixB[i][j] * current[j]);
                 }
-                for (int j = i + 1; j < size; j++)
+                for (int j = i + 1; j < n; j++)
                 {
-                    temp += (a.get(i, j) * p.get(j));
-                    cnt++;
+                    var += (matrixB[i][j] * prev[j]);
                 }
-                x.set((b.get(i) - temp) / a.get(i, i), i);
+                current[i] = c[i] - var;
             }
-        } while (!converge(x, p, precision));
-//        } while (cnt<10000);
+            cnt++;
+        } while (new ArrayRealVector(prev).getNorm() > ((1 - q) / q) * 0.01 && cnt < 10000);
 
-        logger.debug("number of iterations:" + cnt);
+        logger.debug("seidel iterations:" + cnt);
+        AppVM.message.append("Метод Гаусса-Зейделя| число итераций:" + cnt); // TODO remove dat crutch
 
-        return x;
+        return new ArrayRealVector(current);
+    }
+
+    public static RealMatrix reverseA(RealMatrix a)
+    {
+        int size = a.getColumnDimension();
+        MatrixContainer container = LU(a);
+
+        RealMatrix reversedA = new Array2DRowRealMatrix(size, size);
+
+        RealMatrix u = container.getU(), l = container.getL();
+
+        for (int i = size - 1; i > -1; i--)
+        {
+            for (int j = size - 1; j > -1; j--)
+            {
+                double sum = 0;
+                if (i == j)
+                {
+                    for (int k = j + 1; k < size; k++)
+                    {
+                        sum += (double) u.getEntry(j, k) * reversedA.getEntry(k, j);
+                    }
+                    reversedA.setEntry(j, j, (1 - sum) / (double) u.getEntry(j, j));
+                } else
+                {
+                    if (i < j)
+                    {
+                        sum = 0;
+                        for (int k = i + 1; k < size; k++)
+                        {
+                            sum += (double) u.getEntry(i, k) * reversedA.getEntry(k, j);
+                        }
+                        reversedA.setEntry(i, j, -sum / (double) u.getEntry(i, i));
+                    } else
+                    {
+                        for (int k = j + 1; k < size; k++)
+                        {
+                            sum += reversedA.getEntry(i, k) * (double) l.getEntry(k, j);
+                        }
+                        reversedA.setEntry(i, j, -sum);
+                    }
+                }
+            }
+
+        }
+        try
+        {
+            return new LUDecomposition(a).getSolver().getInverse();
+        } catch (Exception e)
+        {
+            return reversedA;
+        }
     }
 
     /**
      * condition of seidel method
-     * currently it checks if norm of difference of 2 vectors is less than selected precision
+     * currently it checks if norm of difference of 2 vectors is less than selected precisio
      *
      * @param prev
      * @param current
      * @return
      */
-    public static boolean converge(Vector prev, Vector current, double precision)
+    public static boolean converge(double[] prev, double[] current, double precision)
     {
         double norm = 0;
-        for (int i = 0; i < prev.getSize(); i++)
+        for (int i = 0; i < prev.length; i++)
         {
-            norm += (prev.get(i) - current.get(i)) * (prev.get(i) - current.get(i));
+            norm += (prev[i] - current[i]) * (prev[i] - current[i]);
         }
-
-        return (Math.sqrt(norm) <= precision);
+        if (Math.sqrt(norm) >= precision)
+            return false;
+        return true;
     }
 }
