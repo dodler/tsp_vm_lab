@@ -1,15 +1,18 @@
 package lian.artyom;
 
+import lian.RarefiedMatrix;
 import org.apache.commons.math3.linear.*;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
-import vm.container.Matrix;
-import vm.container.NumericMatrix;
 import vm.container.Vector;
 import vm.container.util.NumericMatrixUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+
+import lian.artyom.AppVM1;
+
+import static lian.artyom.AppVM1.*;
 
 /**
  * class that incapsulates logic for lab work
@@ -19,10 +22,12 @@ public abstract class Calculator
 {
     private static Logger logger = Logger.getLogger(Calculator.class);
 
+    public static double GOOD_CONDITION_THRESHOLD = Math.pow(10, 9);
+    public static double EPSILON_THRESHOLD = Math.pow(10, -5);
 
     static
     {
-        if (!AppVM.TEST)
+        if (!AppVM1.FullTask1.TEST)
         {
             logger.setLevel(Level.OFF);
         }
@@ -43,6 +48,11 @@ public abstract class Calculator
         {
             return U;
         }
+    }
+
+    public static boolean isGoodConditioned(RealMatrix a)
+    {
+        return a.getNorm() < GOOD_CONDITION_THRESHOLD;
     }
 
     /**
@@ -83,8 +93,8 @@ public abstract class Calculator
 
 
         logger.debug("lu iterations:" + cnt);
-        AppVM.message.append("Метод LU | число операций:" + cnt); // TODO remove that
-        AppVM.message.append("|");
+        AppVM1.message.append("Метод LU | число операций:" + cnt); // TODO remove that
+        AppVM1.message.append("|");
 
 
 //        for (int i = 0; i < result.getDimension(); i++)
@@ -100,7 +110,7 @@ public abstract class Calculator
         double result = 0;
         for (int i = 0; i < real.getDimension(); i++)
         {
-            result += Math.abs(Math.abs(real.getEntry(i)) - Math.abs(fake.getEntry(i)));
+            result += Math.abs(real.getEntry(i) - fake.getEntry(i));
             result /= Math.abs(real.getEntry(i));
         }
         result /= real.getDimension();
@@ -199,8 +209,8 @@ public abstract class Calculator
         }
 
 
-        AppVM.message.append("Метод LU с выбором ведущего элемента|");
-        AppVM.message.append("Число операций:" + cnt + "|");
+        AppVM1.message.append("Метод LU с выбором ведущего элемента|");
+        AppVM1.message.append("Число операций:" + cnt + "|");
 
         try
         {
@@ -300,15 +310,23 @@ public abstract class Calculator
             secondMethodX.setEntry(i, subArray[q[i]]);
         }
 
-        AppVM.message.append("Метод LU с выбором ведущего элемента|");
-        AppVM.message.append("Число операций:" + sMC + "|");
+        AppVM1.message.append("Метод LU с выбором ведущего элемента|");
+        AppVM1.message.append("Число операций:" + sMC + "|");
 
         return secondMethodX;
     }
 
     public static double calcDeterminant(RealMatrix a)
     {
-        MatrixContainer mc = LU(a);
+        MatrixContainer mc;
+        if (a instanceof RarefiedMatrix)
+        {
+            mc = LU(a, true);
+        } else
+        {
+            mc = LU(a);
+        }
+
         int size = a.getColumnDimension();
         double result = 1;
         for (int i = 0; i < size; i++)
@@ -321,7 +339,38 @@ public abstract class Calculator
         }
         return new LUDecomposition(a).getDeterminant();
 //        return result;
+    }
 
+    /**
+     * for lab work 2
+     *
+     * @param size
+     * @param c
+     * @return
+     */
+    public static RealMatrix enMatrix(int size, int c)
+    {
+        RarefiedMatrix result = new RarefiedMatrix(size);
+        for (int i = 0; i < size; i++)
+        {
+            result.setEntry(i, i, 4);
+        }
+
+        for (int i = 0; i < size - 1; i++)
+        {
+            result.setEntry(i + 1, i, -1);
+            result.setEntry(i, i + 1, -1); // neighbour diagonals
+        }
+
+        for (int i = 0; i < size - c; i++)
+        {
+            result.setEntry(i + c, i, -1);
+            result.setEntry(i + c + 1, i, -1);
+            result.setEntry(i, i + c, -1); // neibour diagonals at distance c
+            result.setEntry(i, i + c + 1, -1); // neibour diagonals at distance c
+        }
+
+        return result;
     }
 
     /**
@@ -378,7 +427,65 @@ public abstract class Calculator
         container.L = l;
         container.U = u;
         return container;
+    }
 
+    public static MatrixContainer LU(RealMatrix a, boolean rare)
+    {
+        MatrixContainer container = new MatrixContainer();
+
+        int size = a.getColumnDimension(), cnt = 0;
+
+        RealMatrix l;
+        RealMatrix u;
+
+        if (rare)
+        {
+            l = new RarefiedMatrix(size);
+            u = new RarefiedMatrix(size);
+        } else
+        {
+            l = new Array2DRowRealMatrix(size, size);
+            u = new Array2DRowRealMatrix(size, size);
+        }
+        double subsum;
+
+        for (int k = 0; k < size; k++)
+        {
+            for (int i = 0; i <= k; i++)
+            {
+                subsum = 0;
+                for (int j = 0; j <= i - 1; j++)
+                {
+                    subsum += l.getEntry(i, j) * u.getEntry(j, k);
+                    cnt++;
+                }
+                u.setEntry(i, k, a.getEntry(i, k) - subsum);
+                cnt++;
+            }
+
+            for (int i = k; i < l.getColumnDimension(); i++)
+            {
+                subsum = 0;
+                for (int j = 0; j <= k - 1; j++)
+                {
+                    subsum += l.getEntry(i, j) * u.getEntry(j, k);
+                    cnt++;
+                }
+                l.setEntry(i, k, (a.getEntry(i, k) - subsum) / u.getEntry(k, k));
+                cnt++;
+            }
+        }
+        subsum = 0;
+        for (int i = 0; i != l.getColumnDimension() - 1; i++)
+        {
+            subsum += l.getEntry(u.getColumnDimension() - 1, i) * u.getEntry(i, u.getColumnDimension() - 1);
+            cnt++;
+
+        }
+        u.setEntry(u.getColumnDimension() - 1, u.getColumnDimension() - 1, a.getEntry(u.getColumnDimension() - 1, u.getColumnDimension() - 1) - subsum);
+        container.L = l;
+        container.U = u;
+        return container;
     }
 
     /**
@@ -460,65 +567,60 @@ public abstract class Calculator
      */
     public static RealVector eigennumberQR(RealMatrix a)
     {
-        int iterNum = 0;
-
-        RealMatrix A = a,
-                R = new Array2DRowRealMatrix(A.getRowDimension(), A.getColumnDimension());
-        MatrixContainer mcTemp;
-        while (!converge(
-                R.getColumn(0),
-                A.getColumn(0),
-                0.000001
-        ) && iterNum < 10000)
-        {
-            mcTemp = QR(A);
-            R = new Array2DRowRealMatrix(A.getData());
-            A = mcTemp.getL().multiply(mcTemp.getU());
-            iterNum++;
-        }
-        logger.debug("iterNum=" + iterNum);
-
-        RealVector result = new ArrayRealVector(a.getRowDimension());
-        for (int i = 0; i < a.getRowDimension(); i++)
-        {
-            result.setEntry(i, a.getEntry(i, i));
-        }
-//        return result;
+//        int iterNum = 0;
+//
+//        RealMatrix A = a,
+//                R = new Array2DRowRealMatrix(A.getRowDimension(), A.getColumnDimension());
+//        MatrixContainer mcTemp;
+//        while (!converge(
+//                R.getColumn(0),
+//                A.getColumn(0),
+//                0.000001
+//        ) && iterNum < 1000)
+//        {
+//            mcTemp = QR(A);
+//            R = new Array2DRowRealMatrix(A.getData());
+//            A = mcTemp.getL().multiply(mcTemp.getU());
+//            iterNum++;
+//        }
+//        logger.debug("iterNum=" + iterNum);
+//
+//        RealVector result = new ArrayRealVector(a.getRowDimension());
+//        for (int i = 0; i < a.getRowDimension(); i++)
+//        {
+//            result.setEntry(i, a.getEntry(i, i));
+//        }
 
         return new ArrayRealVector(new EigenDecomposition(a).getRealEigenvalues());
-
-//        return new ArrayRealVector(A.getRow(0));
     }
 
 
     public static RealVector seidelSolve2(RealMatrix a1, RealVector b1)
     {
         int n = b1.getDimension();
-        double[] p = new double[n], x = new double[n];
-        double[][] a = a1.getData();
-        double[] b = b1.toArray();
+        RealVector p1 = new ArrayRealVector(n), x1 = new ArrayRealVector(n);
         int cnt = 0;
 
         do
         {
             for (int i = 0; i < n; i++)
-                p[i] = x[i];
+                p1.setEntry(i, x1.getEntry(i));
 
             for (int i = 0; i < n; i++)
             {
                 double var = 0;
                 for (int j = 0; j < i; j++)
-                    var += (a[i][j] * x[j]);
+                    var += (a1.getEntry(i, j) * x1.getEntry(j));
                 for (int j = i + 1; j < n; j++)
-                    var += (a[i][j] * p[j]);
-                x[i] = (b[i] - var) / a[i][i];
+                    var += (a1.getEntry(i, j) * p1.getEntry(j));
+                x1.setEntry(i, (b1.getEntry(i) - var) / a1.getEntry(i, i));
             }
             cnt++;
-        } while (!converge(p, x, 0.001));
+        } while (!converge(p1.toArray(), x1.toArray(), 0.001));
 
-        AppVM.message.append("Метод Зейделя. Число итераций: " + cnt + "|");
+        AppVM1.message.append("Метод Зейделя. Число итераций: " + cnt + "|");
 
-        return new ArrayRealVector(x);
+        return x1;
     }
 
     public static RealVector seidelSolve(RealMatrix matrix, RealVector vector)
@@ -567,7 +669,7 @@ public abstract class Calculator
         } while (new ArrayRealVector(prev).getNorm() > ((1 - q) / q) * 0.01 && cnt < 10000);
 
         logger.debug("seidel iterations:" + cnt);
-        AppVM.message.append("Метод Гаусса-Зейделя| число итераций:" + cnt); // TODO remove dat crutch
+        AppVM1.message.append("Метод Гаусса-Зейделя| число итераций:" + cnt); // TODO remove dat crutch
 
         return new ArrayRealVector(current);
     }
