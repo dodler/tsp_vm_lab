@@ -133,7 +133,18 @@ public class RarefiedMatrix implements RealMatrix
     @Override
     public RealVector preMultiply(RealVector realVector) throws DimensionMismatchException
     {
-        return null;
+        if (realVector.getDimension() != size) throw new DimensionMismatchException(realVector.getDimension(), size);
+        RealVector result = new ArrayRealVector(size);
+        for (int i = 0; i < size; i++)
+        {
+            double sum = 0;
+            for (int j = 0; j < size; j++)
+            {
+                sum += getEntry(i,j)*realVector.getEntry(j);
+            }
+            result.setEntry(i,sum);
+        }
+        return result;
     }
 
     @Override
@@ -223,13 +234,31 @@ public class RarefiedMatrix implements RealMatrix
     @Override
     public RealMatrix add(RealMatrix realMatrix) throws MatrixDimensionMismatchException
     {
-        return null;
+        RealMatrix result = new RarefiedMatrix(size);
+        for (int i = 0; i < size; i++)
+        {
+            for (int j = 0; j < size; j++)
+            {
+                result.setEntry(i, j, getEntry(i, j) + realMatrix.getEntry(i, j));
+            }
+        }
+        return result;
     }
 
     @Override
     public RealMatrix subtract(RealMatrix realMatrix) throws MatrixDimensionMismatchException
     {
-        return null;
+        int size = realMatrix.getColumnDimension();
+        RarefiedMatrix result = new RarefiedMatrix(size);
+        for (int i = 0; i < size; i++)
+        {
+            for (int j = 0; j < size; j++)
+            {
+                result.setEntry(i, j, getEntry(i, j) - realMatrix.getEntry(i, j));
+            }
+        }
+        return result;
+
     }
 
     @Override
@@ -241,7 +270,15 @@ public class RarefiedMatrix implements RealMatrix
     @Override
     public RealMatrix scalarMultiply(double v)
     {
-        return null;
+        RarefiedMatrix result = new RarefiedMatrix(size);
+        for (int i = 0; i < size; i++)
+        {
+            for (int j = 0; j < size; j++)
+            {
+                result.setEntry(i, j, getEntry(i, j) * (-1));
+            }
+        }
+        return result;
     }
 
     @Override
@@ -293,7 +330,7 @@ public class RarefiedMatrix implements RealMatrix
     public double getNorm()
     {
         RealVector eigen = Calculator.eigennumberQR(this);
-        return eigen.getMaxValue()/eigen.getMinValue();
+        return eigen.getMaxValue() / eigen.getMinValue();
     }
 
     @Override
@@ -481,5 +518,15 @@ public class RarefiedMatrix implements RealMatrix
     public int getColumnDimension()
     {
         return size;
+    }
+
+    public static RarefiedMatrix getIdentityMatrix(int size)
+    {
+        RarefiedMatrix result = new RarefiedMatrix(size);
+        for (int i = 0; i < size; i++)
+        {
+            result.setEntry(i, i, 1.0);
+        }
+        return result;
     }
 }

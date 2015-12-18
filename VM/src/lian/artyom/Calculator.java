@@ -23,7 +23,7 @@ public abstract class Calculator
     private static Logger logger = Logger.getLogger(Calculator.class);
 
     public static double GOOD_CONDITION_THRESHOLD = Math.pow(10, 9);
-    public static double EPSILON_THRESHOLD = Math.pow(10, -5);
+    public static double EPSILON_THRESHOLD = Math.pow(10, -12);
 
     static
     {
@@ -31,6 +31,21 @@ public abstract class Calculator
         {
             logger.setLevel(Level.OFF);
         }
+    }
+
+    public static boolean isSymmetric(RealMatrix a)
+    {
+        for (int i = 0; i < a.getRowDimension(); i++)
+        {
+            for (int j = 0; j < a.getRowDimension(); j++)
+            {
+                if (a.getEntry(i, j) != a.getEntry(i, j))
+                {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
 
@@ -111,9 +126,9 @@ public abstract class Calculator
         for (int i = 0; i < real.getDimension(); i++)
         {
             result += Math.abs(real.getEntry(i) - fake.getEntry(i));
-            result /= Math.abs(real.getEntry(i));
+            result /= Math.abs(fake.getEntry(i));
         }
-        result /= real.getDimension();
+//        result /= real.getDimension();
         return result;
     }
 
@@ -365,9 +380,9 @@ public abstract class Calculator
         for (int i = 0; i < size - c; i++)
         {
             result.setEntry(i + c, i, -1);
-            result.setEntry(i + c + 1, i, -1);
+//            result.setEntry(i + c, i, -1);
             result.setEntry(i, i + c, -1); // neibour diagonals at distance c
-            result.setEntry(i, i + c + 1, -1); // neibour diagonals at distance c
+//            result.setEntry(i, i + c, -1); // neibour diagonals at distance c
         }
 
         return result;
@@ -666,7 +681,8 @@ public abstract class Calculator
                 current[i] = c[i] - var;
             }
             cnt++;
-        } while (new ArrayRealVector(prev).getNorm() > ((1 - q) / q) * 0.01 && cnt < 10000);
+//        } while (new ArrayRealVector(prev).getNorm() > ((1 - q) / q) * 0.01);
+        } while (new ArrayRealVector(prev).getNorm() > EPSILON_THRESHOLD && cnt < 10000);
 
         logger.debug("seidel iterations:" + cnt);
         AppVM1.message.append("Метод Гаусса-Зейделя| число итераций:" + cnt); // TODO remove dat crutch

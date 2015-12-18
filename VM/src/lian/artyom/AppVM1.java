@@ -2,10 +2,9 @@ package lian.artyom;
 
 import com.sun.xml.internal.bind.v2.model.runtime.RuntimeArrayInfo;
 import lian.RarefiedMatrix;
-import lian.artyom.solver.GaussSeidelSolver;
-import lian.artyom.solver.HoleskySolver;
-import lian.artyom.solver.JacobySolver;
-import lian.artyom.solver.LUSolver;
+import lian.artyom.plotter.Plotter;
+import lian.artyom.regularization.impl.TikhonovRegulizer;
+import lian.artyom.solver.*;
 import org.apache.commons.math3.linear.*;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
@@ -14,6 +13,8 @@ import vm.container.Vector;
 import vm.container.util.NumericMatrixUtils;
 
 import java.io.*;
+import java.util.Arrays;
+import java.util.Scanner;
 
 /**
  * entry point for lab work
@@ -134,7 +135,227 @@ public class AppVM1
     public static void main(String[] args) throws IOException
     {
         DOMConfigurator.configure("/media/artem/385BE95714C3BE20/IdeaProjects/Custom/config/log4j-config.xml");
-        FullTask2.execute();
+        Calculator.EPSILON_THRESHOLD = Math.pow(10, -20);
+        FullTask3.K = 1;
+        FullTask3.execute();
+
+//        FullTask3.K = 2;
+//        FullTask3.execute();
+//
+//        FullTask3.K = 3;
+//        FullTask3.execute();
+    }
+
+    public static final class FullTask3
+    {
+        private static int N = 5, K = 3;
+        private static double A = 0, B = 1, H = (B - A) / (N - 1);
+
+        private static RealVector x, b, a;
+        private static RealMatrix k;
+
+        private static final void prepare()
+        {
+            k = new RarefiedMatrix(N);
+            x = new ArrayRealVector(N);
+            a = new ArrayRealVector(N);
+
+            for (int i = 0; i < N; i++)
+            {
+                x.setEntry(i, A + i * H); // net
+            }
+
+            for (int i = 0; i < N; i++)
+            {
+                a.setEntry(i, Ai(i)); // weight coefficients
+            }
+
+            for (int i = 0; i < N; i++)
+            {
+                for (int j = 0; j < N; j++)
+                {
+                    k.setEntry(i, j, Ai(j) * K(x.getEntry(i), x.getEntry(j)));
+                }
+            }
+
+            b = new ArrayRealVector(N);
+            for (int i = 0; i < N; i++)
+            {
+                b.setEntry(i, f(x.getEntry(i))); // right part
+            }
+        }
+
+        private static final double Ai(int i)
+        {
+            if (i == 0 || i == N - 1)
+            {
+                return H / 2;
+            } else
+            {
+                return H;
+            }
+        }
+
+        private static final double alpha(int k)
+        {
+            return Math.pow(10, -k);
+        }
+
+        private static final double K(double s, double t)
+        {
+            return Math.pow(s + t, 1.0 / 3.0);
+        }
+
+        private static final double f(double t)
+        {
+            return t * t;
+        }
+
+        private static final double beta(RealMatrix a, int i)
+        {
+            switch (i)
+            {
+                case 1:
+                    return 1;
+                case 2:
+                    return Math.sqrt(alpha(i));
+                case 3:
+                    double leastEigen = Calculator.eigennumberQR(a).getMinValue();
+                    return Math.sqrt((Math.pow(leastEigen, 2) / 2) + alpha(i));
+                default:
+                    return 0;
+            }
+        }
+
+        private static final RealMatrix extendedMatrix(RealMatrix A, double beta, double alpha)
+        {
+            int size = A.getColumnDimension();
+            RealMatrix result = new RarefiedMatrix(size * 2), At = A.transpose();
+
+            for (int i = 0; i < size; i++)
+            {
+                for (int j = 0; j < size; j++)
+                {
+                    int ind = i == j ? 1 : 0;
+                    result.setEntry(i, j, ind * beta);
+
+                    result.setEntry(i + size, j, A.getEntry(i, j));
+                    result.setEntry(i, j + size, At.getEntry(i, j));
+
+                    result.setEntry(i + size, j + size, -ind * alpha * beta);
+                }
+            }
+
+            return result;
+        }
+
+        private static final RealVector extendedVector(RealVector b)
+        {
+            int size = b.getDimension();
+            RealVector result = new ArrayRealVector(size * 2);
+            for (int i = 0; i < size; i++)
+            {
+                result.setEntry(i, b.getEntry(i));
+                result.setEntry(i + size, 0);
+            }
+            return result;
+        }
+
+        private static RealVector cutX(RealVector xExt)
+        {
+            int size = xExt.getDimension();
+            if (size != N * 2)
+            {
+                return xExt;
+            }
+            RealVector result = new ArrayRealVector(size / 2);
+            for (int i = 0; i < size / 2; i++)
+            {
+                result.setEntry(i, xExt.getEntry(size / 2 + i));
+            }
+            return result;
+        }
+
+        private static RealVector solve, extSolve;
+
+        private static final void solve()
+        {
+            RealMatrix regularizedK = new TikhonovRegulizer().regulize(k, alpha(K));
+            b = regularizedK.transpose().preMultiply(b);
+
+            RealMatrix extendedK = extendedMatrix(regularizedK, beta(regularizedK, K), alpha(K));
+            RealVector extendedB = extendedVector(b);
+
+            Solver holesky = new HoleskySolver();
+            extSolve = cutX(new QRDecomposition(extendedK).getSolver().solve(extendedB));
+
+            solve = holesky.isApplicable(regularizedK) ? cutX(holesky.solve(regularizedK, b)) : new ArrayRealVector(N);
+
+            logger.debug("extended for QR" + extSolve);
+            logger.debug("holesky" + solve);
+        }
+
+        private static final void alpha()
+        {
+            final Plotter plotter = new Plotter("Решения системы с параметрами");
+            final RealVector axis = new ArrayRealVector(N);
+
+            for (int i = 0; i < axis.getDimension(); i++)
+            {
+                axis.setEntry(i, i);
+            }
+
+            K = 1;
+            prepare();
+            solve();
+            plotter.addRealVector(axis, solve, "Решение методом QR, alpha1");
+
+            K = 2;
+            prepare();
+            solve();
+            plotter.addRealVector(axis, solve, "Решение методом QR, alpha2");
+
+            K = 3;
+            prepare();
+            solve();
+            plotter.addRealVector(axis, solve, "Решение методом QR, alpha3");
+
+            plotter.plot();
+        }
+
+        private static final void beta()
+        {
+            final Plotter plotter = new Plotter("Решения системы с параметрами");
+            final RealVector axis = new ArrayRealVector(N);
+
+            for (int i = 0; i < axis.getDimension(); i++)
+            {
+                axis.setEntry(i, i);
+            }
+
+            K = 1;
+            prepare();
+            solve();
+            plotter.addRealVector(axis, extSolve, "Решение методом QR, beta1");
+
+            K = 2;
+            prepare();
+            solve();
+            plotter.addRealVector(axis, extSolve, "Решение методом QR, beta2");
+
+            K = 3;
+            prepare();
+            solve();
+            plotter.addRealVector(axis, extSolve, "Решение методом QR, beta3");
+
+            plotter.plot();
+        }
+
+        public static final void execute()
+        {
+            alpha();
+            beta();
+        }
     }
 
     public static final class FullTask2
@@ -166,11 +387,23 @@ public class AppVM1
                 BufferedReader reader = new BufferedReader(new FileReader(new File("prod_out/l2_set.txt")));
                 SIZE = Integer.parseInt(reader.readLine());
                 C = Integer.parseInt(reader.readLine());
+                Calculator.EPSILON_THRESHOLD = Double.parseDouble(reader.readLine());
             } catch (Exception e)
             {
                 logger.debug(e);
-                SIZE = 50;
-                C = 25;
+                SIZE = 10;
+                C = 5;
+
+                System.out.println("Введите размер матрицы");
+                Scanner c = new Scanner(System.in);
+                SIZE = c.nextInt();
+
+                System.out.println("Введите параметр с");
+                C = c.nextInt();
+
+                System.out.println("Введите требуемую точность:");
+                Calculator.EPSILON_THRESHOLD = c.nextDouble();
+
             }
 
             a = Calculator.enMatrix(SIZE, C);
@@ -197,8 +430,10 @@ public class AppVM1
             out.append("\n");
 
             HoleskySolver holeskySolver = new HoleskySolver();
-            logger.debug("is holesky applicable:");
-            logger.debug(holeskySolver.isApplicable(a));
+//            logger.debug("is holesky applicable:");
+//            logger.debug(holeskySolver.isApplicable(a));
+            logger.debug(Calculator.isSymmetric(a));
+            logger.debug(a.getNorm());
             logger.debug("holesky solve:");
             RealVector solutionHolesky = holeskySolver.solve(a, b);
             logger.debug(solutionHolesky);
@@ -207,7 +442,7 @@ public class AppVM1
             logger.debug("holesky fill value");
             logger.debug(holeskySolver.getFillValue());
 
-            out.append("Решением методом наименьших квадратов. Относительная погрешность:");
+            out.append("Решением методом разложения Холецкого. Относительная погрешность:");
             out.append(Calculator.relativeError(x, solutionHolesky));
             out.append("\n");
             out.append("Величина заполнения:");
@@ -215,13 +450,17 @@ public class AppVM1
             out.append("\n");
 
             GaussSeidelSolver solver = new GaussSeidelSolver();
+            logger.debug(solver.isApplicable(a));
             RealVector seidel = solver.solve(a, b);
+//            RealVector seidel = Calculator.seidelSolve(a, b);
 
             out.append("Решением методом Гаусса-Зейделя. Относительная погрешность:");
             out.append(Calculator.relativeError(x, seidel));
             out.append("\n");
             out.append("Величина заполнения:");
             out.append(0);
+            out.append("\n");
+            out.append("Точность:" + Calculator.EPSILON_THRESHOLD);
             out.append("\n");
 
             logger.debug(Calculator.isGoodConditioned(a));

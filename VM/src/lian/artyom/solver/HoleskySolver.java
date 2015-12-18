@@ -2,6 +2,7 @@ package lian.artyom.solver;
 
 import lian.RarefiedMatrix;
 import lian.artyom.Calculator;
+import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.LUDecomposition;
 import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
@@ -66,18 +67,41 @@ public class HoleskySolver implements Solver
     @Override
     public RealVector solve(RealMatrix a, RealVector b)
     {
+        int size = b.getDimension();
         RealMatrix L = cholesky(a);
 
-        RealVector y = new LUSolver().solve(L, b);
+
+
+        RealVector y = new ArrayRealVector(size);
+
+        for (int i = 0; i < size; i++)
+        {
+            double sum = 0;
+            for (int k = 0; k < i; k++)
+            {
+                sum += L.getEntry(i, k) * y.getEntry(k);
+            }
+            y.setEntry(i, (b.getEntry(i) - sum) / L.getEntry(i, i));
+        }
+
         RealMatrix Lt = L.transpose();
 
         fillValue = ((RarefiedMatrix) L).noneZeroCount() + ((RarefiedMatrix) Lt).noneZeroCount() -
                 ((RarefiedMatrix) a).noneZeroCount() - a.getColumnDimension();
 
-//        System.out.println(a);
-//        System.out.println(L);
-//        System.out.println(L.multiply(Lt));
+        RealVector x = new ArrayRealVector(size);
 
-        return new LUSolver().solve(Lt, y);
+        for (int i = 0; i < size; i++)
+        {
+            double sum = 0;
+            for (int k = 0; k < i; k++)
+            {
+                sum += Lt.getEntry(size - i - 1, size - k - 1) * x.getEntry(size - k - 1);
+            }
+            x.setEntry(size - i - 1, (y.getEntry(size - i - 1) - sum) / Lt.getEntry(size - i - 1, size - i - 1));
+        }
+
+//        return new LUSolver().solve(Lt, y);
+        return x;
     }
 }
