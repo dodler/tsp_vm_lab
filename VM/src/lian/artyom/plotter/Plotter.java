@@ -55,7 +55,7 @@ public class Plotter extends ApplicationFrame
         ((XYSeriesCollection) dataset).addSeries(data);
         final TextTitle title = new TextTitle(label);
         title.setPosition(RectangleEdge.BOTTOM);
-        legend.add(title);
+//        legend.add(title);
     }
 
     public void plot()

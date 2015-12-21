@@ -10,9 +10,9 @@ import vm.container.util.NumericMatrixUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import lian.artyom.AppVM1;
-
-import static lian.artyom.AppVM1.*;
+import static java.lang.Math.abs;
+import static java.lang.Math.pow;
+import static java.lang.Math.sqrt;
 
 /**
  * class that incapsulates logic for lab work
@@ -22,8 +22,8 @@ public abstract class Calculator
 {
     private static Logger logger = Logger.getLogger(Calculator.class);
 
-    public static double GOOD_CONDITION_THRESHOLD = Math.pow(10, 9);
-    public static double EPSILON_THRESHOLD = Math.pow(10, -12);
+    public static double GOOD_CONDITION_THRESHOLD = pow(10, 9);
+    public static double EPSILON_THRESHOLD = pow(10, -12);
 
     static
     {
@@ -125,8 +125,8 @@ public abstract class Calculator
         double result = 0;
         for (int i = 0; i < real.getDimension(); i++)
         {
-            result += Math.abs(real.getEntry(i) - fake.getEntry(i));
-            result /= Math.abs(fake.getEntry(i));
+            result += abs(real.getEntry(i) - fake.getEntry(i));
+            result /= abs(fake.getEntry(i));
         }
 //        result /= real.getDimension();
         return result;
@@ -606,8 +606,43 @@ public abstract class Calculator
 //            result.setEntry(i, a.getEntry(i, i));
 //        }
 
-        return new ArrayRealVector(new EigenDecomposition(a).getRealEigenvalues());
+//        return new ArrayRealVector(new EigenDecomposition(a).getRealEigenvalues());
+        return new ArrayRealVector(new SingularValueDecomposition(a).getSingularValues());
     }
+
+    public static double cond(RealMatrix a)
+    {
+        return new SingularValueDecomposition(a).getConditionNumber();
+    }
+
+    public static double specialCond(RealMatrix a, double alpha)
+    {
+        RealVector eigens = new ArrayRealVector(new SingularValueDecomposition(a).getSingularValues());
+        double eigMax = pow(eigens.getMaxValue(), 2), eigMin = pow(eigens.getMinValue(), 2);
+        return (eigMax + alpha) / (eigMin + alpha);
+    }
+
+    public static double specialCond2(RealMatrix a, double alpha)
+    {
+//        RealVector eigens = new ArrayRealVector(new EigenDecomposition(a).getRealEigenvalues());
+        RealVector eigens = new ArrayRealVector(new SingularValueDecomposition(a).getSingularValues());
+        double eigMax = pow(eigens.getMaxValue(), 2), eigMin = pow(eigens.getMinValue(), 2);
+
+        double result = 1 - alpha + sqrt(pow(alpha - 1, 2) + 4 * (eigMax + alpha));
+        double under = abs(1 - alpha - sqrt(pow(alpha - 1, 2) + 4 * (eigMin + alpha)));
+        return result / under;
+    }
+
+    public static double cond2(RealMatrix a)
+    {
+        RealMatrix reverse = new QRDecomposition(a).getSolver().getInverse();
+        return a.getNorm() * reverse.getNorm();
+    }
+
+//    private static double norm2(RealMatrix a)
+//    {
+//
+//    }
 
 
     public static RealVector seidelSolve2(RealMatrix a1, RealVector b1)
@@ -757,7 +792,7 @@ public abstract class Calculator
         {
             norm += (prev[i] - current[i]) * (prev[i] - current[i]);
         }
-        if (Math.sqrt(norm) >= precision)
+        if (sqrt(norm) >= precision)
             return false;
         return true;
     }

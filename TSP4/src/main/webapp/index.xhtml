@@ -1,0 +1,28 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+        xmlns:ui="http://java.sun.com/jsf/facelets"
+        xmlns:h="http://java.sun.com/jsf/html"
+        xmlns:f="http://java.sun.com/jsf/core"
+        xmlns:c="http://java.sun.com/jsp/jstl/core">
+<h:head>
+    <title>Калькулятор №4</title>
+    <link href="resources/styles.css" rel="stylesheet"/>
+</h:head>
+<h:body>
+    <p>Программа рассчитывает разницу двух вещественных чисел (тип double).</p>
+
+    <p>#{mainBean.output}</p>
+    <h:form styleClass="form" method="GET" action="result">
+        <h:inputText id="arg1" value="#{mainBean.arg1}" placeholder="Введите вычитаемое"
+                     converterMessage="Поддерживаются только чиселки">
+        </h:inputText>
+        <h:message for="arg1"/>
+
+        <h:inputText id="arg2" value="#{mainBean.arg2}" placeholder="Введите вычитатель"
+                     converterMessage="Поддерживаются только чиселки">
+        </h:inputText>
+        <h:message for="arg2"/>
+        <h:commandButton value="Выполнить вычисление" action="result"/>
+    </h:form>
+
+</h:body>
+</html>

@@ -41,8 +41,8 @@ public class LUSolver implements Solver
         int cnt = 0;
         RealMatrix l = container.getL(), u = container.getU();
 
-        fillValue = ((RarefiedMatrix) l).noneZeroCount() + ((RarefiedMatrix) u).noneZeroCount() -
-                ((RarefiedMatrix) a).noneZeroCount() - a.getColumnDimension();
+//        fillValue = ((RarefiedMatrix) l).noneZeroCount() + ((RarefiedMatrix) u).noneZeroCount() -
+//                ((RarefiedMatrix) a).noneZeroCount() - a.getColumnDimension();
 
         int size = l.getColumnDimension();
         RealVector result = new ArrayRealVector(size);
@@ -70,5 +70,11 @@ public class LUSolver implements Solver
             result.setEntry(i, (y[i] - sum) / u.getEntry(i, i));
         }
         return result;
+    }
+
+    @Override
+    public String getName()
+    {
+        return "LU";
     }
 }

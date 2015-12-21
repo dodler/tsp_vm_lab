@@ -22,7 +22,7 @@ public class NumericMatrixUtils
         {
             for (int j = 0; j < m.getColumnDimension(); j++)
             {
-                result.set(i,j, m.getEntry(i,j));
+                result.set(i, j, m.getEntry(i, j));
             }
         }
         return result;
@@ -144,7 +144,7 @@ public class NumericMatrixUtils
 //        Matrix result = singleMatrix(size);
         RealMatrix result = MatrixUtils.createRealIdentityMatrix(size);
         for (int i = 0; i < size; i++)
-            for (int j = 0; j < size ; j++)
+            for (int j = 0; j < size; j++)
             {
                 result.setEntry(i, j, (1.0 / (i + j + 1.0)));
             }
@@ -278,7 +278,7 @@ public class NumericMatrixUtils
             double cij = 0;
             for (int r = 0; r < size; r++)
             {
-                cij += (double) a.getEntry(i, r) * x.getEntry(r);
+                cij += a.getEntry(i, r) * x.getEntry(r);
             }
             result.setEntry(i, cij);
 

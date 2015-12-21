@@ -1,6 +1,5 @@
 package lian.artyom;
 
-import com.sun.xml.internal.bind.v2.model.runtime.RuntimeArrayInfo;
 import lian.RarefiedMatrix;
 import lian.artyom.plotter.Plotter;
 import lian.artyom.regularization.impl.TikhonovRegulizer;
@@ -13,8 +12,9 @@ import vm.container.Vector;
 import vm.container.util.NumericMatrixUtils;
 
 import java.io.*;
-import java.util.Arrays;
 import java.util.Scanner;
+
+import static lian.artyom.Calculator.*;
 
 /**
  * entry point for lab work
@@ -136,7 +136,7 @@ public class AppVM1
     {
         DOMConfigurator.configure("/media/artem/385BE95714C3BE20/IdeaProjects/Custom/config/log4j-config.xml");
         Calculator.EPSILON_THRESHOLD = Math.pow(10, -20);
-        FullTask3.K = 1;
+//        FullTask3.test();
         FullTask3.execute();
 
 //        FullTask3.K = 2;
@@ -148,7 +148,7 @@ public class AppVM1
 
     public static final class FullTask3
     {
-        private static int N = 5, K = 3;
+        private static int N = 100, K = 3;
         private static double A = 0, B = 1, H = (B - A) / (N - 1);
 
         private static RealVector x, b, a;
@@ -156,7 +156,7 @@ public class AppVM1
 
         private static final void prepare()
         {
-            k = new RarefiedMatrix(N);
+            k = new Array2DRowRealMatrix(N, N);
             x = new ArrayRealVector(N);
             a = new ArrayRealVector(N);
 
@@ -194,7 +194,21 @@ public class AppVM1
             {
                 return H;
             }
+//            if (N / 2 == 0)
+//            {
+//                if (i == 0 || i == N - 1)
+//                {
+//                    return H / 3;
+//                } else if ()
+//                {
+//
+//                }
+//            } else
+//            {
+//
+//            }
         }
+
 
         private static final double alpha(int k)
         {
@@ -220,8 +234,9 @@ public class AppVM1
                 case 2:
                     return Math.sqrt(alpha(i));
                 case 3:
-                    double leastEigen = Calculator.eigennumberQR(a).getMinValue();
-                    return Math.sqrt((Math.pow(leastEigen, 2) / 2) + alpha(i));
+                    double leastEigen = Calculator.eigennumberQR(a.multiply(a.transpose())).getMinValue();
+//                    return Math.sqrt((Math.pow(leastEigen, 2) * 0.5) + alpha(i));
+                    return Math.sqrt((leastEigen * 0.5) + alpha(i));
                 default:
                     return 0;
             }
@@ -230,7 +245,7 @@ public class AppVM1
         private static final RealMatrix extendedMatrix(RealMatrix A, double beta, double alpha)
         {
             int size = A.getColumnDimension();
-            RealMatrix result = new RarefiedMatrix(size * 2), At = A.transpose();
+            RealMatrix result = new Array2DRowRealMatrix(size * 2, size * 2), At = A.transpose();
 
             for (int i = 0; i < size; i++)
             {
@@ -242,7 +257,7 @@ public class AppVM1
                     result.setEntry(i + size, j, A.getEntry(i, j));
                     result.setEntry(i, j + size, At.getEntry(i, j));
 
-                    result.setEntry(i + size, j + size, -ind * alpha * beta);
+                    result.setEntry(i + size, j + size, -ind * alpha * beta * beta);
                 }
             }
 
@@ -278,83 +293,147 @@ public class AppVM1
 
         private static RealVector solve, extSolve;
 
-        private static final void solve()
-        {
-            RealMatrix regularizedK = new TikhonovRegulizer().regulize(k, alpha(K));
-            b = regularizedK.transpose().preMultiply(b);
+        private static Solver solver = new HoleskySolver();
 
-            RealMatrix extendedK = extendedMatrix(regularizedK, beta(regularizedK, K), alpha(K));
+        private static RealMatrix extendedK;
+        private static RealMatrix regularizedK;
+
+        private static final void solveRegularized()
+        {
+            regularizedK = new TikhonovRegulizer().regulize(k, alpha(K));
+            RealVector regularizedB = NumericMatrixUtils.multiplicateMatrix(k.transpose(), b);
+            solve = solver.isApplicable(regularizedK) ? cutX(solver.solve(regularizedK, regularizedB)) : new ArrayRealVector(N);
+        }
+
+        private static final void solveExtended()
+        {
+            extendedK = extendedMatrix(k, beta(k, BETA), alpha(K));
+            RealVector extendedB = extendedVector(b);
+            extSolve = cutX(new QRDecomposition(extendedK).getSolver().solve(extendedB));
+        }
+
+        private static BufferedWriter writer;
+
+        private static final void alpha() throws IOException
+        {
+            final Plotter plotter = new Plotter("Решения системы с параметрами");
+            RealMatrix ktk = k.transpose().multiply(k);
+            writer.write("cond АtA = " + cond(ktk) + "\n");
+//            writer.write("cond АtA = " + cond2(k.multiply(k.transpose())) + "\n");
+
+            writer.write("_____________________________________________________\n");
+            BETA = 1;
+            K = 3;
+            solveRegularized();
+            writer.write("alpha=" + alpha(2) + "\n");
+            writer.write("beta=" + beta(ktk, BETA) + "\n");
+            plotter.addRealVector(axis, solve, "Решение методом " + solver.getName() + ", alpha=" + alpha(K) + "");
+            solveExtended();
+            writer.write("cond {AtA + alphaE} = " + specialCond2(extendedK, alpha(K)) + "\n");
+            plotter.addRealVector(axis, extSolve, "Решение методом LU, beta=" + beta(k, BETA));
+            writer.write("cond {alphaE | A \n| At | -alpha/beta E} = " + specialCond2(ktk, alpha(K)) + "\n");
+
+            writer.write("_____________________________________________________\n");
+
+
+            BETA = 2;
+            K = 2;
+            writer.write("alpha=" + alpha(3) + "\n");
+            writer.write("beta=" + beta(ktk, BETA) + "\n");
+            solveRegularized();
+            writer.write("beta=" + beta(ktk, BETA) + "\n");
+            writer.write("cond {AtA + alphaE} = " + specialCond2(extendedK, alpha(K)) + "\n");
+            plotter.addRealVector(axis, solve, "Решение методом " + solver.getName() + ", alpha=" + alpha(K) + "");
+            solveExtended();
+            plotter.addRealVector(axis, extSolve, "Решение методом LU, beta=" + beta(k, BETA));
+            writer.write("cond {alphaE | A | At \n| -alpha/beta E} = " + specialCond2(ktk, alpha(K)) + "\n");
+
+            writer.write("_____________________________________________________\n");
+
+            BETA = 3;
+            K = 1;
+            writer.write("alpha=" + alpha(4) + "\n");
+            writer.write("beta=" + beta(ktk, BETA) + "\n");
+            solveRegularized();
+            writer.write("cond {AtA + alphaE} = " + specialCond2(extendedK, alpha(K)) + "\n");
+            plotter.addRealVector(axis, solve, "Решение методом " + solver.getName() + ", alpha=" + alpha(K) + "");
+            solveExtended();
+            writer.write("cond {alphaE | A | At \n| -alpha/beta E} = " + specialCond2(ktk, alpha(K)) + "\n");
+            plotter.addRealVector(axis, extSolve, "Решение методом LU, beta=" + beta(k, BETA));
+
+            plotter.plot();
+        }
+
+        private static int BETA = 1;
+
+        private static RealVector axis;
+
+        public static final void execute() throws IOException
+        {
+            N = 5;
+            File file = new File("prod_out/out3.txt");
+            file.createNewFile();
+            writer = new BufferedWriter(new FileWriter(file));
+            prepare();
+            writer.write("cond A = " + cond(k) + "\n");
+//            writer.write("Число обусловленностей исходной матрицы = " + cond(k) + "\n");
+            axis = new ArrayRealVector(x.toArray());
+            alpha();
+            writer.flush();
+            writer.close();
+//
+//            for (int i = 0; i < 10; i++)
+//            {
+//                K = i;
+//                solveRegularized();
+//                logger.debug(specialCond2(regularizedK, alpha(K)));
+//            }
+        }
+
+        private static final void test()
+        {
+            solver = new LUSolver();
+            Solver solver2 = new QRSolver();
+            TikhonovRegulizer regulizer = new TikhonovRegulizer();
+            N = 5;
+            K = 5;
+            BETA = 2;
+
+            prepare();
+//            k = NumericMatrixUtils.conditionedMatrix(N);
+            regularizedK = regulizer.regulize(k, alpha(K));
+            extendedK = extendedMatrix(k, beta(k, BETA), alpha(K));
+
+            RealVector x = Vector.risingVector(N);
+            RealVector b = NumericMatrixUtils.multiplicateMatrix(k, x);
+
+            RealVector regularizedB = NumericMatrixUtils.multiplicateMatrix(k.transpose(), b);
             RealVector extendedB = extendedVector(b);
 
-            Solver holesky = new HoleskySolver();
-            extSolve = cutX(new QRDecomposition(extendedK).getSolver().solve(extendedB));
+            logger.debug(k);
+            logger.debug(x);
+            logger.debug(b);
 
-            solve = holesky.isApplicable(regularizedK) ? cutX(holesky.solve(regularizedK, b)) : new ArrayRealVector(N);
+            RealVector sol1 = solver.solve(regularizedK, regularizedB),
+                    sol2 = cutX(solver2.solve(extendedK, extendedB)),
+                    sol3 = solver.solve(k, b);
 
-            logger.debug("extended for QR" + extSolve);
-            logger.debug("holesky" + solve);
-        }
+            logger.debug("solution");
+            logger.debug(sol1);
+            logger.debug(sol2);
+            logger.debug(sol3);
+//
+            logger.debug("cond");
+            logger.debug(cond(k));
+            logger.debug(cond(k.multiply(k.transpose())));
+            logger.debug(cond(regularizedK));
+            logger.debug(cond(extendedK));
+//
+            logger.debug("errors");
+            logger.debug(Calculator.relativeError(x, sol1));
+            logger.debug(Calculator.relativeError(x, sol2));
+            logger.debug(Calculator.relativeError(x, sol3));
 
-        private static final void alpha()
-        {
-            final Plotter plotter = new Plotter("Решения системы с параметрами");
-            final RealVector axis = new ArrayRealVector(N);
-
-            for (int i = 0; i < axis.getDimension(); i++)
-            {
-                axis.setEntry(i, i);
-            }
-
-            K = 1;
-            prepare();
-            solve();
-            plotter.addRealVector(axis, solve, "Решение методом QR, alpha1");
-
-            K = 2;
-            prepare();
-            solve();
-            plotter.addRealVector(axis, solve, "Решение методом QR, alpha2");
-
-            K = 3;
-            prepare();
-            solve();
-            plotter.addRealVector(axis, solve, "Решение методом QR, alpha3");
-
-            plotter.plot();
-        }
-
-        private static final void beta()
-        {
-            final Plotter plotter = new Plotter("Решения системы с параметрами");
-            final RealVector axis = new ArrayRealVector(N);
-
-            for (int i = 0; i < axis.getDimension(); i++)
-            {
-                axis.setEntry(i, i);
-            }
-
-            K = 1;
-            prepare();
-            solve();
-            plotter.addRealVector(axis, extSolve, "Решение методом QR, beta1");
-
-            K = 2;
-            prepare();
-            solve();
-            plotter.addRealVector(axis, extSolve, "Решение методом QR, beta2");
-
-            K = 3;
-            prepare();
-            solve();
-            plotter.addRealVector(axis, extSolve, "Решение методом QR, beta3");
-
-            plotter.plot();
-        }
-
-        public static final void execute()
-        {
-            alpha();
-            beta();
         }
     }
 
@@ -434,7 +513,7 @@ public class AppVM1
 //            logger.debug(holeskySolver.isApplicable(a));
             logger.debug(Calculator.isSymmetric(a));
             logger.debug(a.getNorm());
-            logger.debug("holesky solve:");
+            logger.debug("holesky solveRegularized:");
             RealVector solutionHolesky = holeskySolver.solve(a, b);
             logger.debug(solutionHolesky);
             logger.debug("holesky error");

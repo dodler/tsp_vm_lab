@@ -24,7 +24,7 @@ public class GaussSeidelSolver implements Solver
         {
             for (int j = 0; j < i; j++)
             {
-                L.setEntry(i,j, a.getEntry(i,j));
+                L.setEntry(i, j, a.getEntry(i, j));
             }
         }
 
@@ -39,7 +39,7 @@ public class GaussSeidelSolver implements Solver
         {
             for (int j = 0; j < i; j++)
             {
-                R.setEntry(j,i, a.getEntry(j,i));
+                R.setEntry(j, i, a.getEntry(j, i));
             }
         }
 
@@ -120,6 +120,12 @@ public class GaussSeidelSolver implements Solver
             data[i][0] = v.getEntry(i);
         }
         return new Array2DRowRealMatrix(data);
+    }
+
+    @Override
+    public String getName()
+    {
+        return "Gauss-Seidel";
     }
 }
 

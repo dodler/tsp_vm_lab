@@ -1,0 +1,25 @@
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:ui="http://java.sun.com/jsf/facelets"
+      xmlns:h="http://java.sun.com/jsf/html"
+      xmlns:f="http://java.sun.com/jsf/core"
+      xmlns:c="http://java.sun.com/jsp/jstl/core">
+<h:head>
+    <title>Калькулятор №4</title>
+    <link href="resources/styles.css" rel="stylesheet"/>
+</h:head>
+<h:body>
+    <p>Программа рассчитывает разницу двух вещественных чисел (тип double).</p>
+
+    <p>#{mainBean.output}</p>
+    <p>Результат</p>
+    <p>#{mainBean.execute()}</p>
+    <!--<p>#{xmlBean.setBean(mainBean)}</p>-->
+    <p>#{mainBean.result}</p>
+
+    <p>Выгрузить xml</p>
+    <h:form styleClass="form" method="GET" action="xml">
+        <h:commandButton value="Экспортировать в xml" action="xml" target="_blank"/>
+    </h:form>
+    <a href="/tsp4/index.xhtml">Назад</a>
+</h:body>
+</html>

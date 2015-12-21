@@ -10,4 +10,5 @@ public interface Solver
 {
     public boolean isApplicable(RealMatrix a);
     public RealVector solve(RealMatrix a, RealVector b);
+    String getName();
 }

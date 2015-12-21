@@ -69,4 +69,10 @@ public class JacobySolver implements Solver
         return cur;
     }
 
+    @Override
+    public String getName()
+    {
+        return "Jacoby";
+    }
+
 }

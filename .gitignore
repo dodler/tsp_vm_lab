@@ -50,3 +50,4 @@ Thumbs.db
 *.swp
 *.xml~
 *.war
+*target

@@ -2,10 +2,7 @@ package lian.artyom.solver;
 
 import lian.RarefiedMatrix;
 import lian.artyom.Calculator;
-import org.apache.commons.math3.linear.ArrayRealVector;
-import org.apache.commons.math3.linear.LUDecomposition;
-import org.apache.commons.math3.linear.RealMatrix;
-import org.apache.commons.math3.linear.RealVector;
+import org.apache.commons.math3.linear.*;
 
 /**
  * Created by artem on 05.12.15.
@@ -30,7 +27,7 @@ public class HoleskySolver implements Solver
     public static RealMatrix cholesky(RealMatrix a)
     {
         int size = a.getRowDimension();
-        RealMatrix L = new RarefiedMatrix(size);
+        RealMatrix L = new Array2DRowRealMatrix(size, size);
 
         for (int i = 0; i < size; i++)
         {
@@ -70,8 +67,6 @@ public class HoleskySolver implements Solver
         int size = b.getDimension();
         RealMatrix L = cholesky(a);
 
-
-
         RealVector y = new ArrayRealVector(size);
 
         for (int i = 0; i < size; i++)
@@ -86,8 +81,8 @@ public class HoleskySolver implements Solver
 
         RealMatrix Lt = L.transpose();
 
-        fillValue = ((RarefiedMatrix) L).noneZeroCount() + ((RarefiedMatrix) Lt).noneZeroCount() -
-                ((RarefiedMatrix) a).noneZeroCount() - a.getColumnDimension();
+//        fillValue = ((RarefiedMatrix) L).noneZeroCount() + ((RarefiedMatrix) Lt).noneZeroCount() -
+//                ((RarefiedMatrix) a).noneZeroCount() - a.getColumnDimension();
 
         RealVector x = new ArrayRealVector(size);
 
@@ -103,5 +98,11 @@ public class HoleskySolver implements Solver
 
 //        return new LUSolver().solve(Lt, y);
         return x;
+    }
+
+    @Override
+    public String getName()
+    {
+        return "Holesky";
     }
 }
